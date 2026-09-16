@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0c10;
+  --surface: #12151b;
+  --surface-2: #191d26;
+  --border: #262b36;
+  --text: #eef1f5;
+  --text-muted: #8b93a3;
+  --signal: #ff6a3d;
+  --signal-soft: #ff6a3d1a;
+  --online: #35d68f;
+  --offline: #4b5262;
+  --danger: #ff5c5c;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-signal: var(--signal);
+  --color-online: var(--online);
+  --color-offline: var(--offline);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-space);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+* {
+  border-color: var(--border);
+}
+
+::selection {
+  background: var(--signal);
+  color: #0a0c10;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee-scroll linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation-duration: 1ms;
+  }
+}
