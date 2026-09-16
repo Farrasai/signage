@@ -58,7 +58,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text outline-none transition-colors focus:border-signal"
-              placeholder="admin@perusahaan.com"
+              placeholder="admin@paras.com"
             />
           </div>
 
@@ -94,8 +94,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-xs leading-relaxed text-text-muted">
-          Belum punya akun? Admin membuat akun untuk Anda dari Supabase
-          Dashboard → Authentication → Users.
+          © 2026 Intel Digital Service KN Wonogiri. All rights reserved.
         </p>
       </div>
     </div>

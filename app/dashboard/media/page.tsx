@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Media, MediaType } from "@/lib/types";
-import { parseYouTubeUrl } from "@/lib/utils";
+import { guessMediaTypeFromUrl, parseYouTubeUrl } from "@/lib/utils";
 import Modal from "@/components/Modal";
 
 function readVideoDuration(file: File): Promise<number> {
@@ -30,7 +30,7 @@ export default function MediaPage() {
   const [items, setItems] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [tab, setTab] = useState<"upload" | "youtube">("upload");
+  const [tab, setTab] = useState<"upload" | "youtube" | "cdn">("upload");
   const [uploading, setUploading] = useState(false);
   const [progressLabel, setProgressLabel] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Media | null>(null);
@@ -39,6 +39,12 @@ export default function MediaPage() {
   const [ytName, setYtName] = useState("");
   const [ytDuration, setYtDuration] = useState(30);
   const [ytError, setYtError] = useState<string | null>(null);
+
+  const [cdnUrl, setCdnUrl] = useState("");
+  const [cdnName, setCdnName] = useState("");
+  const [cdnType, setCdnType] = useState<"image" | "video">("image");
+  const [cdnDuration, setCdnDuration] = useState(10);
+  const [cdnError, setCdnError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,6 +123,42 @@ export default function MediaPage() {
     load();
   }
 
+  function handleCdnUrlBlur() {
+    const guess = guessMediaTypeFromUrl(cdnUrl);
+    if (guess) setCdnType(guess);
+  }
+
+  async function handleAddCdnLink(e: React.FormEvent) {
+    e.preventDefault();
+    setCdnError(null);
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(cdnUrl.trim());
+      if (!parsedUrl.protocol.startsWith("http")) throw new Error("invalid");
+    } catch {
+      setCdnError("URL tidak valid. Tempel link langsung ke file foto/video (https://...).");
+      return;
+    }
+
+    setUploading(true);
+    const supabase = createClient();
+    const fallbackName = decodeURIComponent(parsedUrl.pathname.split("/").pop() || "Konten CDN");
+    await supabase.from("media").insert({
+      name: cdnName.trim() || fallbackName,
+      type: cdnType,
+      url: parsedUrl.toString(),
+      duration: cdnDuration,
+    });
+    setUploading(false);
+    setCdnUrl("");
+    setCdnName("");
+    setCdnDuration(10);
+    setCdnType("image");
+    setShowAdd(false);
+    load();
+  }
+
   async function updateDuration(id: string, duration: number) {
     const supabase = createClient();
     await supabase.from("media").update({ duration }).eq("id", id);
@@ -125,8 +167,9 @@ export default function MediaPage() {
 
   async function deleteMedia(item: Media) {
     const supabase = createClient();
-    if (item.type === "image" || item.type === "video") {
-      const path = item.url.split("/media/")[1];
+    const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/`;
+    if ((item.type === "image" || item.type === "video") && item.url.startsWith(storageBase)) {
+      const path = item.url.slice(storageBase.length);
       if (path) await supabase.storage.from("media").remove([decodeURIComponent(path)]);
     }
     await supabase.from("media").delete().eq("id", item.id);
@@ -140,7 +183,8 @@ export default function MediaPage() {
         <div>
           <h1 className="font-display text-2xl font-semibold">Konten</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Foto dan video disimpan di CDN Supabase Storage. Atau tautkan video/playlist YouTube.
+            Foto dan video disimpan di CDN Supabase Storage, tautkan video/playlist YouTube, atau
+            pakai link langsung dari CDN lain seperti Cloudinary.
           </p>
         </div>
         <button
@@ -153,7 +197,7 @@ export default function MediaPage() {
 
       {!loading && items.length === 0 && (
         <div className="rounded-xl border border-dashed border-border p-10 text-center text-text-muted">
-          Belum ada konten. Unggah foto/video atau tambahkan link YouTube.
+          Belum ada konten. Unggah foto/video, tambahkan link YouTube, atau link CDN.
         </div>
       )}
 
@@ -222,6 +266,14 @@ export default function MediaPage() {
             >
               YouTube
             </button>
+            <button
+              onClick={() => setTab("cdn")}
+              className={`flex-1 rounded-md py-1.5 text-sm ${
+                tab === "cdn" ? "bg-surface text-text" : "text-text-muted"
+              }`}
+            >
+              Link CDN
+            </button>
           </div>
 
           {tab === "upload" ? (
@@ -243,7 +295,7 @@ export default function MediaPage() {
                 <p className="mt-3 text-center text-xs text-text-muted">{progressLabel}</p>
               )}
             </div>
-          ) : (
+          ) : tab === "youtube" ? (
             <form onSubmit={handleAddYoutube} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm text-text-muted">
@@ -278,6 +330,79 @@ export default function MediaPage() {
                 />
               </div>
               {ytError && <p className="text-sm text-danger">{ytError}</p>}
+              <button
+                type="submit"
+                disabled={uploading}
+                className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+              >
+                {uploading ? "Menyimpan..." : "Tambahkan"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleAddCdnLink} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">
+                  Link langsung ke file (Cloudinary, Bunny, S3, dll.)
+                </label>
+                <input
+                  value={cdnUrl}
+                  onChange={(e) => setCdnUrl(e.target.value)}
+                  onBlur={handleCdnUrlBlur}
+                  placeholder="https://res.cloudinary.com/.../video/upload/promo.mp4"
+                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                />
+                <p className="mt-1.5 text-xs text-text-muted">
+                  Tempel URL yang langsung mengarah ke file foto/video (bukan halaman
+                  embed/player). Di Cloudinary, gunakan tombol &ldquo;Copy URL&rdquo; pada
+                  asset-nya.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">Jenis konten</label>
+                <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setCdnType("image")}
+                    className={`flex-1 rounded-md py-1.5 text-sm ${
+                      cdnType === "image" ? "bg-surface text-text" : "text-text-muted"
+                    }`}
+                  >
+                    Foto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCdnType("video")}
+                    className={`flex-1 rounded-md py-1.5 text-sm ${
+                      cdnType === "video" ? "bg-surface text-text" : "text-text-muted"
+                    }`}
+                  >
+                    Video
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">Nama (opsional)</label>
+                <input
+                  value={cdnName}
+                  onChange={(e) => setCdnName(e.target.value)}
+                  placeholder="Contoh: Banner Promo September"
+                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">
+                  Durasi ditampilkan (detik)
+                  {cdnType === "video" && " — video akan lanjut otomatis setelah selesai diputar"}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={cdnDuration}
+                  onChange={(e) => setCdnDuration(parseInt(e.target.value, 10) || 10)}
+                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                />
+              </div>
+              {cdnError && <p className="text-sm text-danger">{cdnError}</p>}
               <button
                 type="submit"
                 disabled={uploading}

@@ -69,6 +69,22 @@ export function youtubeEmbedUrl(type: "youtube_video" | "youtube_playlist", id: 
   return `${base}${id}?${params}`;
 }
 
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif", "bmp"];
+const VIDEO_EXTENSIONS = ["mp4", "webm", "mov", "m4v", "ogg", "m3u8"];
+
+/** Tebak apakah URL CDN eksternal (mis. Cloudinary) mengarah ke foto atau video. */
+export function guessMediaTypeFromUrl(url: string): "image" | "video" | null {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    const ext = pathname.split(".").pop() ?? "";
+    if (IMAGE_EXTENSIONS.includes(ext)) return "image";
+    if (VIDEO_EXTENSIONS.includes(ext)) return "video";
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 const DAY_CODES: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 /** Tentukan schedule mana yang aktif sekarang, prioritas tertinggi menang. */
