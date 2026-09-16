@@ -35,11 +35,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center gap-2.5">
           <span className="h-2.5 w-2.5 rounded-full bg-signal shadow-[0_0_12px_var(--signal)]" />
-          <span className="font-display text-lg font-semibold tracking-tight">Siaran</span>
+          <span className="font-display text-lg font-semibold tracking-tight">Digital Signage KN Wonogiri</span>
         </div>
 
         <h1 className="font-display text-2xl font-semibold leading-snug">
-          Masuk ke panel kontrol
+          Panel Kontrol Admin
         </h1>
         <p className="mt-1.5 text-sm text-text-muted">
           Kelola layar, playlist, dan siaran dari sini.
