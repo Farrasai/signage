@@ -127,3 +127,21 @@ export function playerUrlFor(slug: string): string {
   }
   return `/display/${slug}`;
 }
+
+export const DEFAULT_AGENDA_COLUMNS = ["No.", "Agenda", "Waktu dan Tempat", "Keterangan"];
+
+/**
+ * Ubah teks yang ditempel (dari Excel/Spreadsheet atau CSV) menjadi baris x kolom.
+ * Mendeteksi otomatis: tab (umum saat salin dari spreadsheet) atau koma.
+ * Catatan: pemisahan koma sederhana (tidak menangani koma di dalam tanda kutip).
+ */
+export function parseDelimitedText(raw: string): string[][] {
+  const lines = raw
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.replace(/\s+$/, ""))
+    .filter((line) => line.trim() !== "");
+  if (lines.length === 0) return [];
+
+  const delimiter = lines[0].includes("\t") ? "\t" : ",";
+  return lines.map((line) => line.split(delimiter).map((cell) => cell.trim()));
+}

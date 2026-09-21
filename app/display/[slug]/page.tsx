@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Display, PlaylistItem, RemoteCommand, Schedule } from "@/lib/types";
 import { resolveActiveSchedule, youtubeEmbedUrl } from "@/lib/utils";
+import AgendaTable from "@/components/AgendaTable";
 
 export default function DisplayPlayerPage() {
   const params = useParams<{ slug: string }>();
@@ -29,10 +30,18 @@ export default function DisplayPlayerPage() {
 
   // ---------- Load display by slug ----------
   useEffect(() => {
+    if (!slug) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNotFound(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("displays").select("*").eq("slug", slug).maybeSingle();
+      const { data, error } = await supabase.from("displays").select("*").eq("slug", slug).maybeSingle();
       if (cancelled) return;
+      if (error) {
+        console.error("Gagal memuat data layar dari Supabase:", error);
+      }
       if (!data) {
         setNotFound(true);
         return;
@@ -181,41 +190,77 @@ export default function DisplayPlayerPage() {
   }, [currentItem, paused, advance]);
 
   // ---------- Fullscreen + wake lock ----------
-  const enableFullscreen = useCallback(async () => {
+  const acquireWakeLock = useCallback(async () => {
+    try {
+      wakeLockRef.current = (await navigator.wakeLock?.request("screen")) ?? null;
+    } catch {
+      // Wake Lock tidak didukung di browser ini — layar mungkin tidur sesuai
+      // pengaturan TV, tapi ini bukan masalah kritis.
+    }
+  }, []);
+
+  const enterFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
       }
-      setFsActive(true);
     } catch {
-      // Beberapa TV browser tidak mengizinkan fullscreen API — tidak masalah.
+      // Sebagian browser TV tidak mengizinkan Fullscreen API lewat tombol ini.
+      // Gunakan mode kiosk bawaan browser/TV (lihat README) sebagai gantinya.
     }
-    try {
-      wakeLockRef.current = (await navigator.wakeLock?.request("screen")) ?? null;
-    } catch {
-      // Wake Lock tidak didukung — layar mungkin tidur sesuai pengaturan TV.
-    }
-  }, []);
+    acquireWakeLock();
+  }, [acquireWakeLock]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    enableFullscreen();
+    // Wake Lock aman diminta otomatis (tidak butuh klik pengguna di sebagian
+    // besar browser). Fullscreen SENGAJA TIDAK diminta otomatis saat halaman
+    // dimuat — browser modern memblokirnya tanpa interaksi pengguna, dan
+    // kalaupun berhasil (mis. di sebagian browser TV) terasa tiba-tiba/
+    // mengagetkan. Fullscreen hanya dipicu lewat tombol "⛶ Layar penuh".
+    acquireWakeLock();
     const onVisible = () => {
-      if (document.visibilityState === "visible") enableFullscreen();
+      if (document.visibilityState === "visible") acquireWakeLock();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [enableFullscreen]);
+  }, [acquireWakeLock]);
+
+  // Sinkronkan tombol dengan status fullscreen sebenarnya (mis. saat keluar
+  // fullscreen dengan tombol Escape, tombolnya harus muncul kembali).
+  useEffect(() => {
+    const onFsChange = () => setFsActive(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
 
   // ---------- Render ----------
   if (notFound) {
     return (
       <FullscreenShell>
-        <div className="text-center">
-          <p className="text-lg text-text-muted">Layar tidak ditemukan.</p>
-          <p className="mt-1 text-sm text-text-muted">
-            Periksa kembali URL yang diberikan di dashboard.
-          </p>
+        <div className="max-w-md px-6 text-center">
+          {!slug ? (
+            <>
+              <p className="text-lg text-text-muted">URL layar tidak lengkap.</p>
+              <p className="mt-3 text-xs text-text-muted">
+                URL harus berbentuk <code>/display/nama-slug-layar</code> (ada nama layarnya
+                setelah <code>/display/</code>). Buka lagi lewat tombol &ldquo;Buka ↗&rdquo; atau
+                &ldquo;Salin URL&rdquo; di halaman Layar &amp; TV pada dashboard, jangan mengetik
+                sendiri path-nya.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg text-text-muted">Layar tidak ditemukan.</p>
+              <p className="mt-1 text-sm text-text-muted">
+                Slug yang dicari: <span className="font-mono text-white/70">{slug}</span>
+              </p>
+              <p className="mt-3 text-xs text-text-muted">
+                Periksa kembali URL yang diberikan di dashboard. Jika slug di atas sudah benar-benar
+                sesuai dengan yang ada di dashboard, kemungkinan kebijakan akses publik (RLS) untuk
+                tabel <code>displays</code> di Supabase belum aktif untuk pengguna anonim.
+              </p>
+            </>
+          )}
         </div>
       </FullscreenShell>
     );
@@ -232,7 +277,7 @@ export default function DisplayPlayerPage() {
     <div className="relative h-screen w-screen overflow-hidden bg-black">
       {!fsActive && (
         <button
-          onClick={enableFullscreen}
+          onClick={enterFullscreen}
           className="absolute right-3 top-3 z-30 rounded-md border border-white/20 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur hover:bg-black/60"
         >
           ⛶ Layar penuh
@@ -260,6 +305,14 @@ export default function DisplayPlayerPage() {
             playsInline
             onEnded={advance}
           />
+        ) : currentItem.media.type === "table" ? (
+          currentItem.media.content && (
+            <AgendaTable
+              title={currentItem.media.content.title}
+              columns={currentItem.media.content.columns}
+              rows={currentItem.media.content.rows}
+            />
+          )
         ) : (
           <iframe
             key={currentItem.id}

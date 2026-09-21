@@ -1,4 +1,11 @@
-export type MediaType = "image" | "video" | "youtube_video" | "youtube_playlist";
+export type MediaType = "image" | "video" | "youtube_video" | "youtube_playlist" | "table";
+
+/** Struktur data untuk konten bertipe "table" (mis. tabel agenda/pengumuman). */
+export interface TableContent {
+  title: string;
+  columns: string[];
+  rows: string[][];
+}
 
 export interface Media {
   id: string;
@@ -7,6 +14,7 @@ export interface Media {
   url: string;
   duration: number;
   thumbnail_url: string | null;
+  content: TableContent | null;
   created_at: string;
 }
 

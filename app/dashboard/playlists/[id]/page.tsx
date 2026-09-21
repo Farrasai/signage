@@ -150,6 +150,7 @@ export default function PlaylistEditorPage() {
                   {item.media?.type === "youtube_playlist" && "YouTube playlist"}
                   {item.media?.type === "video" && "Video"}
                   {item.media?.type === "image" && "Foto"}
+                  {item.media?.type === "table" && "Tabel"}
                 </p>
               </div>
             </div>

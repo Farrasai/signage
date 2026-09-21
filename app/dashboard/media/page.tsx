@@ -3,7 +3,12 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Media, MediaType } from "@/lib/types";
-import { guessMediaTypeFromUrl, parseYouTubeUrl } from "@/lib/utils";
+import {
+  DEFAULT_AGENDA_COLUMNS,
+  guessMediaTypeFromUrl,
+  parseDelimitedText,
+  parseYouTubeUrl,
+} from "@/lib/utils";
 import Modal from "@/components/Modal";
 
 function readVideoDuration(file: File): Promise<number> {
@@ -24,13 +29,14 @@ const TYPE_LABEL: Record<MediaType, string> = {
   video: "Video",
   youtube_video: "YouTube (video)",
   youtube_playlist: "YouTube (playlist)",
+  table: "Tabel",
 };
 
 export default function MediaPage() {
   const [items, setItems] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [tab, setTab] = useState<"upload" | "youtube" | "cdn">("upload");
+  const [tab, setTab] = useState<"upload" | "youtube" | "cdn" | "table">("upload");
   const [uploading, setUploading] = useState(false);
   const [progressLabel, setProgressLabel] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Media | null>(null);
@@ -45,6 +51,13 @@ export default function MediaPage() {
   const [cdnType, setCdnType] = useState<"image" | "video">("image");
   const [cdnDuration, setCdnDuration] = useState(10);
   const [cdnError, setCdnError] = useState<string | null>(null);
+
+  const [tableTitle, setTableTitle] = useState("Agenda Kegiatan");
+  const [tableColumns, setTableColumns] = useState<string[]>(DEFAULT_AGENDA_COLUMNS);
+  const [tableRows, setTableRows] = useState<string[][]>([]);
+  const [pasteText, setPasteText] = useState("");
+  const [tableDuration, setTableDuration] = useState(25);
+  const [tableError, setTableError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -159,6 +172,83 @@ export default function MediaPage() {
     load();
   }
 
+  function addColumn() {
+    setTableColumns((cols) => [...cols, `Kolom ${cols.length + 1}`]);
+  }
+
+  function updateColumn(index: number, value: string) {
+    setTableColumns((cols) => cols.map((c, i) => (i === index ? value : c)));
+  }
+
+  function removeColumn(index: number) {
+    setTableColumns((cols) => cols.filter((_, i) => i !== index));
+    setTableRows((rows) => rows.map((row) => row.filter((_, i) => i !== index)));
+  }
+
+  function addEmptyRow() {
+    setTableRows((rows) => [...rows, tableColumns.map(() => "")]);
+  }
+
+  function updateCell(rowIndex: number, colIndex: number, value: string) {
+    setTableRows((rows) =>
+      rows.map((row, ri) => (ri === rowIndex ? row.map((c, ci) => (ci === colIndex ? value : c)) : row))
+    );
+  }
+
+  function removeRow(index: number) {
+    setTableRows((rows) => rows.filter((_, i) => i !== index));
+  }
+
+  function handleParsePaste() {
+    const parsed = parseDelimitedText(pasteText);
+    if (parsed.length === 0) {
+      setTableError("Tidak ada data terbaca. Pastikan tiap baris dipisah tab (dari Excel) atau koma.");
+      return;
+    }
+    setTableError(null);
+    const normalized = parsed.map((row) => {
+      const r = [...row];
+      while (r.length < tableColumns.length) r.push("");
+      return r.slice(0, tableColumns.length);
+    });
+    setTableRows((prev) => [...prev, ...normalized]);
+    setPasteText("");
+  }
+
+  async function handleAddTable(e: React.FormEvent) {
+    e.preventDefault();
+    setTableError(null);
+
+    const cleanColumns = tableColumns.map((c) => c.trim()).filter(Boolean);
+    if (cleanColumns.length === 0) {
+      setTableError("Tambahkan minimal satu kolom.");
+      return;
+    }
+    if (tableRows.length === 0) {
+      setTableError("Tambahkan minimal satu baris data — tempel data atau tambah baris manual.");
+      return;
+    }
+
+    setUploading(true);
+    const supabase = createClient();
+    const title = tableTitle.trim() || "Tabel";
+    await supabase.from("media").insert({
+      name: title,
+      type: "table",
+      url: "",
+      duration: tableDuration,
+      content: { title, columns: cleanColumns, rows: tableRows },
+    });
+    setUploading(false);
+    setTableTitle("Agenda Kegiatan");
+    setTableColumns(DEFAULT_AGENDA_COLUMNS);
+    setTableRows([]);
+    setPasteText("");
+    setTableDuration(25);
+    setShowAdd(false);
+    load();
+  }
+
   async function updateDuration(id: string, duration: number) {
     const supabase = createClient();
     await supabase.from("media").update({ duration }).eq("id", id);
@@ -183,8 +273,8 @@ export default function MediaPage() {
         <div>
           <h1 className="font-display text-2xl font-semibold">Konten</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Foto dan video disimpan di CDN Supabase Storage, tautkan video/playlist YouTube, atau
-            pakai link langsung dari CDN lain seperti Cloudinary.
+            Foto dan video disimpan di CDN Supabase Storage, tautkan video/playlist YouTube,
+            pakai link CDN lain seperti Cloudinary, atau buat tabel agenda/pengumuman.
           </p>
         </div>
         <button
@@ -210,6 +300,13 @@ export default function MediaPage() {
                 <img src={m.url} alt={m.name} className="h-full w-full object-cover" />
               ) : m.type === "video" ? (
                 <video src={m.url} className="h-full w-full object-cover" muted />
+              ) : m.type === "table" ? (
+                <div className="flex flex-col items-center gap-1 text-text-muted">
+                  <span className="text-2xl">▦</span>
+                  <span className="text-[10px]">
+                    {m.content?.columns.length ?? 0} kolom · {m.content?.rows.length ?? 0} baris
+                  </span>
+                </div>
               ) : (
                 <div className="flex flex-col items-center gap-1 text-red-400">
                   <span className="text-2xl">▶</span>
@@ -248,8 +345,12 @@ export default function MediaPage() {
       </div>
 
       {showAdd && (
-        <Modal title="Tambah konten" onClose={() => setShowAdd(false)}>
-          <div className="mb-4 flex gap-1 rounded-lg bg-surface-2 p-1">
+        <Modal
+          title="Tambah konten"
+          onClose={() => setShowAdd(false)}
+          width={tab === "table" ? "max-w-2xl" : "max-w-md"}
+        >
+          <div className="mb-4 flex flex-wrap gap-1 rounded-lg bg-surface-2 p-1">
             <button
               onClick={() => setTab("upload")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
@@ -273,6 +374,14 @@ export default function MediaPage() {
               }`}
             >
               Link CDN
+            </button>
+            <button
+              onClick={() => setTab("table")}
+              className={`flex-1 rounded-md py-1.5 text-sm ${
+                tab === "table" ? "bg-surface text-text" : "text-text-muted"
+              }`}
+            >
+              Tabel
             </button>
           </div>
 
@@ -338,7 +447,7 @@ export default function MediaPage() {
                 {uploading ? "Menyimpan..." : "Tambahkan"}
               </button>
             </form>
-          ) : (
+          ) : tab === "cdn" ? (
             <form onSubmit={handleAddCdnLink} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm text-text-muted">
@@ -409,6 +518,146 @@ export default function MediaPage() {
                 className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Tambahkan"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleAddTable} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">Judul tabel</label>
+                <input
+                  value={tableTitle}
+                  onChange={(e) => setTableTitle(e.target.value)}
+                  placeholder="Contoh: Agenda Kegiatan"
+                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">Kolom</label>
+                <div className="flex flex-wrap gap-2">
+                  {tableColumns.map((col, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                      <input
+                        value={col}
+                        onChange={(e) => updateColumn(i, e.target.value)}
+                        className="w-36 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-sm outline-none focus:border-signal"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeColumn(i)}
+                        className="text-text-muted hover:text-danger"
+                        title="Hapus kolom"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addColumn}
+                    className="rounded-lg border border-dashed border-border px-3 py-1.5 text-sm text-text-muted hover:border-signal/50"
+                  >
+                    + Kolom
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">
+                  Tempel data (pisahkan kolom dengan tab dari Excel, atau koma — satu baris per data)
+                </label>
+                <textarea
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  rows={4}
+                  placeholder={
+                    "1\tRapat Koordinasi\tSenin, 10:00 - Ruang A\tWajib hadir\n" +
+                    "2\tPelatihan Staf\tSelasa, 13:00 - Aula\t-"
+                  }
+                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-mono text-xs outline-none focus:border-signal"
+                />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleParsePaste}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs hover:border-signal/50"
+                  >
+                    Proses tempelan → tambahkan ke tabel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addEmptyRow}
+                    className="rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-text-muted hover:border-signal/50"
+                  >
+                    + Baris kosong
+                  </button>
+                </div>
+              </div>
+
+              {tableRows.length > 0 && (
+                <div className="max-h-64 overflow-auto rounded-lg border border-border">
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr>
+                        {tableColumns.map((col, i) => (
+                          <th
+                            key={i}
+                            className="sticky top-0 border-b border-border bg-surface-2 px-2 py-1.5 text-left text-text-muted"
+                          >
+                            {col}
+                          </th>
+                        ))}
+                        <th className="sticky top-0 border-b border-border bg-surface-2 px-2 py-1.5" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableRows.map((row, ri) => (
+                        <tr key={ri}>
+                          {tableColumns.map((_, ci) => (
+                            <td key={ci} className="border-b border-border px-1 py-1">
+                              <input
+                                value={row[ci] ?? ""}
+                                onChange={(e) => updateCell(ri, ci, e.target.value)}
+                                className="w-full rounded bg-transparent px-1.5 py-1 outline-none focus:bg-surface"
+                              />
+                            </td>
+                          ))}
+                          <td className="border-b border-border px-1 py-1 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeRow(ri)}
+                              className="text-text-muted hover:text-danger"
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1.5 block text-sm text-text-muted">
+                  Durasi ditampilkan (detik)
+                </label>
+                <input
+                  type="number"
+                  min={5}
+                  value={tableDuration}
+                  onChange={(e) => setTableDuration(parseInt(e.target.value, 10) || 25)}
+                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                />
+              </div>
+
+              {tableError && <p className="text-sm text-danger">{tableError}</p>}
+              <button
+                type="submit"
+                disabled={uploading}
+                className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+              >
+                {uploading ? "Menyimpan..." : "Simpan tabel"}
               </button>
             </form>
           )}

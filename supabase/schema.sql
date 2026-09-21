@@ -28,10 +28,12 @@ create table if not exists displays (
 create table if not exists media (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  type text not null check (type in ('image','video','youtube_video','youtube_playlist')),
+  type text not null check (type in ('image','video','youtube_video','youtube_playlist','table')),
   url text not null,
   duration integer not null default 10,
   thumbnail_url text,
+  -- Dipakai khusus untuk type = 'table': { title, columns: string[], rows: string[][] }
+  content jsonb,
   created_at timestamptz not null default now()
 );
 
