@@ -85,6 +85,16 @@ export function guessMediaTypeFromUrl(url: string): "image" | "video" | null {
   return null;
 }
 
+/** Awalan URL publik bucket Storage "media" milik project Supabase ini. */
+export function mediaStorageBase(): string {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/media/`;
+}
+
+/** True kalau URL berasal dari bucket Storage kita sendiri (bukan link CDN eksternal). */
+export function isMediaStorageUrl(url: string): boolean {
+  return url.startsWith(mediaStorageBase());
+}
+
 const DAY_CODES: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 /** Tentukan schedule mana yang aktif sekarang, prioritas tertinggi menang. */

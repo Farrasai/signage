@@ -6,10 +6,13 @@ import type { Media, MediaType } from "@/lib/types";
 import {
   DEFAULT_AGENDA_COLUMNS,
   guessMediaTypeFromUrl,
+  isMediaStorageUrl,
+  mediaStorageBase,
   parseDelimitedText,
   parseYouTubeUrl,
 } from "@/lib/utils";
 import Modal from "@/components/Modal";
+import EditMediaModal from "@/components/EditMediaModal";
 
 function readVideoDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
@@ -40,6 +43,7 @@ export default function MediaPage() {
   const [uploading, setUploading] = useState(false);
   const [progressLabel, setProgressLabel] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Media | null>(null);
+  const [editingItem, setEditingItem] = useState<Media | null>(null);
 
   const [ytUrl, setYtUrl] = useState("");
   const [ytName, setYtName] = useState("");
@@ -257,9 +261,8 @@ export default function MediaPage() {
 
   async function deleteMedia(item: Media) {
     const supabase = createClient();
-    const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/`;
-    if ((item.type === "image" || item.type === "video") && item.url.startsWith(storageBase)) {
-      const path = item.url.slice(storageBase.length);
+    if ((item.type === "image" || item.type === "video") && isMediaStorageUrl(item.url)) {
+      const path = item.url.slice(mediaStorageBase().length);
       if (path) await supabase.storage.from("media").remove([decodeURIComponent(path)]);
     }
     await supabase.from("media").delete().eq("id", item.id);
@@ -332,12 +335,20 @@ export default function MediaPage() {
                   />
                   detik
                 </label>
-                <button
-                  onClick={() => setConfirmDelete(m)}
-                  className="text-xs text-text-muted hover:text-danger"
-                >
-                  Hapus
-                </button>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => setEditingItem(m)}
+                    className="text-xs text-text-muted hover:text-signal"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(m)}
+                    className="text-xs text-text-muted hover:text-danger"
+                  >
+                    Hapus
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -662,6 +673,17 @@ export default function MediaPage() {
             </form>
           )}
         </Modal>
+      )}
+
+      {editingItem && (
+        <EditMediaModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSaved={() => {
+            setEditingItem(null);
+            load();
+          }}
+        />
       )}
 
       {confirmDelete && (
