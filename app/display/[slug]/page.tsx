@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Display, PlaylistItem, RemoteCommand, Schedule } from "@/lib/types";
+import type { Display, EmergencyNotice, PlaylistItem, RemoteCommand, Schedule } from "@/lib/types";
 import { resolveActiveSchedule, youtubeEmbedUrl } from "@/lib/utils";
 import AgendaTable from "@/components/AgendaTable";
+import EmergencyOverlay from "@/components/EmergencyOverlay";
 
 export default function DisplayPlayerPage() {
   const params = useParams<{ slug: string }>();
@@ -19,6 +20,7 @@ export default function DisplayPlayerPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tick, setTick] = useState(0);
   const [fsActive, setFsActive] = useState(false);
+  const [emergencyNotice, setEmergencyNotice] = useState<EmergencyNotice | null>(null);
 
   const itemsRef = useRef<PlaylistItem[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -167,6 +169,36 @@ export default function DisplayPlayerPage() {
       supabase.removeChannel(channel);
     };
   }, [display, supabase, advance, goPrev]);
+
+  // ---------- Pengumuman darurat: singleton global, dipantau semua layar ----------
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("emergency_notice").select("*").eq("id", 1).maybeSingle();
+      if (!cancelled) setEmergencyNotice((data as EmergencyNotice) ?? null);
+    })();
+
+    const channel = supabase
+      .channel("emergency-notice")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "emergency_notice", filter: "id=eq.1" },
+        (payload) => setEmergencyNotice(payload.new as EmergencyNotice)
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
+
+  const showEmergency = Boolean(
+    emergencyNotice?.is_active &&
+      display &&
+      (emergencyNotice.target_display_ids.length === 0 ||
+        emergencyNotice.target_display_ids.includes(display.id))
+  );
 
   // ---------- Auto-advance timer for the current item ----------
   const currentItem = items[currentIndex];
@@ -337,6 +369,14 @@ export default function DisplayPlayerPage() {
             <span className="px-8">{marqueeText}</span>
           </div>
         </div>
+      )}
+
+      {showEmergency && emergencyNotice && (
+        <EmergencyOverlay
+          title={emergencyNotice.title}
+          message={emergencyNotice.message}
+          publishedAt={emergencyNotice.published_at}
+        />
       )}
     </div>
   );

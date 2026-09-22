@@ -65,6 +65,19 @@ create table if not exists remote_commands (
   created_at timestamptz not null default now()
 );
 
+-- Status darurat global (singleton — selalu tepat satu baris, id = 1).
+-- target_display_ids kosong ('{}') berarti tayang ke SEMUA layar.
+create table if not exists emergency_notice (
+  id int primary key default 1 check (id = 1),
+  title text not null default 'PENGUMUMAN DARURAT LAYANAN',
+  message text not null default '',
+  is_active boolean not null default false,
+  target_display_ids uuid[] not null default '{}',
+  published_at timestamptz,
+  created_at timestamptz not null default now()
+);
+insert into emergency_notice (id) values (1) on conflict (id) do nothing;
+
 create index if not exists idx_playlist_items_playlist on playlist_items(playlist_id, sort_order);
 create index if not exists idx_schedules_display on schedules(display_id);
 create index if not exists idx_remote_commands_display on remote_commands(display_id, executed);
@@ -74,6 +87,7 @@ create index if not exists idx_remote_commands_display on remote_commands(displa
 -- Jika error "already member of publication", boleh diabaikan.
 alter publication supabase_realtime add table displays;
 alter publication supabase_realtime add table remote_commands;
+alter publication supabase_realtime add table emergency_notice;
 
 -- ---------- ROW LEVEL SECURITY ----------
 
@@ -83,6 +97,7 @@ alter table playlists enable row level security;
 alter table playlist_items enable row level security;
 alter table schedules enable row level security;
 alter table remote_commands enable row level security;
+alter table emergency_notice enable row level security;
 
 -- Layar TV (anonymous) hanya perlu baca konten & menulis status dirinya sendiri.
 create policy "public read displays" on displays for select using (true);
@@ -95,6 +110,8 @@ create policy "public read schedules" on schedules for select using (true);
 
 create policy "public read remote_commands" on remote_commands for select using (true);
 create policy "public update remote_commands" on remote_commands for update using (true);
+
+create policy "public read emergency_notice" on emergency_notice for select using (true);
 
 -- Hanya admin yang login (authenticated) yang boleh membuat/mengubah/menghapus konten.
 create policy "auth insert displays" on displays for insert to authenticated with check (true);
@@ -118,6 +135,10 @@ create policy "auth delete schedules" on schedules for delete to authenticated u
 
 create policy "auth insert remote_commands" on remote_commands for insert to authenticated with check (true);
 create policy "auth delete remote_commands" on remote_commands for delete to authenticated using (true);
+
+-- Hanya admin yang bisa mengubah (tayangkan/tutup) pengumuman darurat.
+create policy "auth update emergency_notice" on emergency_notice
+  for update to authenticated using (true) with check (true);
 
 -- ---------- STORAGE (dipakai sebagai "CDN" untuk foto/video yang diupload) ----------
 

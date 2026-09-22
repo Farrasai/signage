@@ -77,3 +77,15 @@ export interface RemoteCommand {
   executed: boolean;
   created_at: string;
 }
+
+/** Status darurat global (singleton, id selalu 1) — overlay yang menimpa semua layar. */
+export interface EmergencyNotice {
+  id: number;
+  title: string;
+  message: string;
+  is_active: boolean;
+  /** Kosong ([]) berarti tayang ke SEMUA layar. Kalau tidak kosong, hanya ke display.id yang terdaftar. */
+  target_display_ids: string[];
+  published_at: string | null;
+  created_at: string;
+}
