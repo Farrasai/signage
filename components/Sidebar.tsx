@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Ringkasan", exact: true },
+  { href: "/dashboard", label: "Dashboard", exact: true },
   { href: "/dashboard/displays", label: "Layar & TV" },
   { href: "/dashboard/media", label: "Konten" },
   { href: "/dashboard/playlists", label: "Playlist" },
