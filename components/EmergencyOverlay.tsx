@@ -17,7 +17,7 @@ export default function EmergencyOverlay({
         </div>
 
         <span className="inline-block rounded-full bg-red-600 px-3 py-1 text-xs font-bold tracking-wide text-white">
-          PERHATIAN URGENT
+          PERHATIAN
         </span>
 
         <h2 className="mt-4 font-display text-xl font-bold uppercase leading-snug text-white sm:text-3xl">
