@@ -78,6 +78,18 @@ create table if not exists emergency_notice (
 );
 insert into emergency_notice (id) values (1) on conflict (id) do nothing;
 
+-- Kode PIN sekali-pakai untuk memasangkan TV ke sebuah layar tanpa mengetik
+-- slug/URL panjang. Lihat kebijakan RLS di bawah — sengaja tidak bisa dibaca
+-- langsung oleh pengguna anonim, hanya lewat fungsi redeem_pairing_code().
+create table if not exists display_pairing_codes (
+  id uuid primary key default gen_random_uuid(),
+  display_id uuid not null references displays(id) on delete cascade,
+  code text not null unique,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_display_pairing_codes_display on display_pairing_codes(display_id);
+
 create index if not exists idx_playlist_items_playlist on playlist_items(playlist_id, sort_order);
 create index if not exists idx_schedules_display on schedules(display_id);
 create index if not exists idx_remote_commands_display on remote_commands(display_id, executed);
@@ -88,6 +100,7 @@ create index if not exists idx_remote_commands_display on remote_commands(displa
 alter publication supabase_realtime add table displays;
 alter publication supabase_realtime add table remote_commands;
 alter publication supabase_realtime add table emergency_notice;
+alter publication supabase_realtime add table display_pairing_codes;
 
 -- ---------- ROW LEVEL SECURITY ----------
 
@@ -98,6 +111,7 @@ alter table playlist_items enable row level security;
 alter table schedules enable row level security;
 alter table remote_commands enable row level security;
 alter table emergency_notice enable row level security;
+alter table display_pairing_codes enable row level security;
 
 -- Layar TV (anonymous) hanya perlu baca konten & menulis status dirinya sendiri.
 create policy "public read displays" on displays for select using (true);
@@ -140,6 +154,11 @@ create policy "auth delete remote_commands" on remote_commands for delete to aut
 create policy "auth update emergency_notice" on emergency_notice
   for update to authenticated using (true) with check (true);
 
+-- Kode pairing sengaja TIDAK punya policy baca untuk anon (lihat komentar di
+-- atas tabelnya) — hanya admin yang login yang boleh mengelolanya langsung.
+create policy "auth all display_pairing_codes" on display_pairing_codes
+  for all to authenticated using (true) with check (true);
+
 -- ---------- STORAGE (dipakai sebagai "CDN" untuk foto/video yang diupload) ----------
 
 insert into storage.buckets (id, name, public)
@@ -154,3 +173,42 @@ create policy "auth upload media bucket" on storage.objects for insert to authen
 
 create policy "auth delete media bucket" on storage.objects for delete to authenticated
   using (bucket_id = 'media');
+
+-- ---------- PAIRING TV LEWAT KODE PIN ----------
+-- Fungsi penukar kode → slug, dipanggil lewat RPC dari layar TV (anonim).
+-- Berjalan sebagai SECURITY DEFINER supaya bisa membaca/menghapus baris di
+-- display_pairing_codes walau anon tidak punya izin SELECT langsung ke
+-- tabel itu. Kode langsung dihapus begitu berhasil ditukar (sekali pakai)
+-- atau kalau ternyata sudah kedaluwarsa saat ditukar.
+create or replace function redeem_pairing_code(input_code text)
+returns table(slug text, name text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  matched record;
+begin
+  select dpc.id, dpc.display_id, dpc.expires_at
+    into matched
+  from display_pairing_codes dpc
+  where dpc.code = input_code
+  limit 1;
+
+  if matched.id is null then
+    return;
+  end if;
+
+  if matched.expires_at < now() then
+    delete from display_pairing_codes where id = matched.id;
+    return;
+  end if;
+
+  delete from display_pairing_codes where id = matched.id;
+
+  return query
+    select d.slug, d.name from displays d where d.id = matched.display_id;
+end;
+$$;
+
+grant execute on function redeem_pairing_code(text) to anon, authenticated;

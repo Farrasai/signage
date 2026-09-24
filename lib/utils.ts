@@ -138,6 +138,17 @@ export function playerUrlFor(slug: string): string {
   return `/display/${slug}`;
 }
 
+/** Kunci localStorage tempat TV menyimpan slug layarnya sendiri setelah dipasangkan. */
+export const PAIRING_STORAGE_KEY = "siaran:paired-slug";
+
+/** Berapa lama kode PIN pairing berlaku sebelum kedaluwarsa otomatis. */
+export const PAIRING_CODE_TTL_MINUTES = 30;
+
+/** Kode PIN 6 digit — dipilih angka saja supaya gampang diketik pakai remote TV. */
+export function generatePairingCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 export const DEFAULT_AGENDA_COLUMNS = ["No.", "Agenda", "Waktu dan Tempat", "Keterangan"];
 
 /**

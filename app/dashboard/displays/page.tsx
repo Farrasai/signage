@@ -2,8 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Display, Playlist } from "@/lib/types";
-import { generateSlug, playerUrlFor, formatDateTime } from "@/lib/utils";
+import type { Display, PairingCode, Playlist } from "@/lib/types";
+import {
+  PAIRING_CODE_TTL_MINUTES,
+  generatePairingCode,
+  generateSlug,
+  playerUrlFor,
+  formatDateTime,
+} from "@/lib/utils";
 import Modal from "@/components/Modal";
 import StatusDot from "@/components/StatusDot";
 import RemoteControls from "@/components/RemoteControls";
@@ -17,22 +23,67 @@ export default function DisplaysPage() {
   const [saving, setSaving] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Display | null>(null);
+  const [pairingCodes, setPairingCodes] = useState<Record<string, PairingCode>>({});
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: d }, { data: p }] = await Promise.all([
+    const [{ data: d }, { data: p }, { data: c }] = await Promise.all([
       supabase.from("displays").select("*").order("created_at", { ascending: false }),
       supabase.from("playlists").select("*").order("name"),
+      supabase.from("display_pairing_codes").select("*"),
     ]);
     setDisplays(d ?? []);
     setPlaylists(p ?? []);
+    const codeMap: Record<string, PairingCode> = {};
+    (c ?? []).forEach((row) => {
+      codeMap[row.display_id] = row as PairingCode;
+    });
+    setPairingCodes(codeMap);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+    const supabase = createClient();
+    const channel = supabase
+      .channel("displays-pairing-codes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "display_pairing_codes" },
+        load
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [load]);
+
+  async function generateCode(displayId: string) {
+    setGeneratingId(displayId);
+    const supabase = createClient();
+    await supabase.from("display_pairing_codes").delete().eq("display_id", displayId);
+
+    const expiresAt = new Date(Date.now() + PAIRING_CODE_TTL_MINUTES * 60_000).toISOString();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { error } = await supabase.from("display_pairing_codes").insert({
+        display_id: displayId,
+        code: generatePairingCode(),
+        expires_at: expiresAt,
+      });
+      if (!error) break; // berhasil (atau gagal karena sebab lain di luar bentrok kode)
+    }
+    setGeneratingId(null);
+    load();
+  }
+
+  async function copyCode(code: string, displayId: string) {
+    await navigator.clipboard.writeText(code);
+    setCopiedCodeId(displayId);
+    setTimeout(() => setCopiedCodeId(null), 1500);
+  }
 
   async function createDisplay(e: React.FormEvent) {
     e.preventDefault();
@@ -74,7 +125,9 @@ export default function DisplaysPage() {
         <div>
           <h1 className="font-display text-2xl font-semibold">Layar & TV</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Setiap layar punya URL sendiri untuk dibuka di browser TV.
+            Buka URL-nya langsung di browser TV, atau pasangkan lewat kode PIN dari{" "}
+            <span className="font-mono">/display</span> — praktis untuk TV yang dikendalikan
+            remote.
           </p>
         </div>
         <button
@@ -182,6 +235,54 @@ export default function DisplaysPage() {
                   Hapus
                 </button>
               </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-2 px-3.5 py-3">
+              {pairingCodes[d.id] ? (
+                <>
+                  <div>
+                    <p className="text-xs text-text-muted">
+                      Kode pairing (untuk TV Android/Smart TV — ketik lewat remote di{" "}
+                      <span className="font-mono">/display</span>)
+                    </p>
+                    <p className="mt-0.5 font-mono text-2xl tracking-[0.3em] text-signal">
+                      {pairingCodes[d.id].code}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-text-muted">
+                      Berlaku sampai {formatDateTime(pairingCodes[d.id].expires_at)} atau sampai
+                      dipakai sekali
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => copyCode(pairingCodes[d.id].code, d.id)}
+                      className="rounded-md border border-border px-2.5 py-1.5 text-xs text-text-muted hover:border-signal/50 hover:text-text"
+                    >
+                      {copiedCodeId === d.id ? "Tersalin!" : "Salin kode"}
+                    </button>
+                    <button
+                      onClick={() => generateCode(d.id)}
+                      disabled={generatingId === d.id}
+                      className="rounded-md border border-border px-2.5 py-1.5 text-xs text-text-muted hover:border-signal/50 hover:text-text disabled:opacity-50"
+                    >
+                      Buat kode baru
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-text-muted">
+                    Belum ada kode pairing aktif untuk layar ini.
+                  </p>
+                  <button
+                    onClick={() => generateCode(d.id)}
+                    disabled={generatingId === d.id}
+                    className="rounded-md border border-signal/40 px-3 py-1.5 text-xs font-medium text-signal hover:bg-signal-soft disabled:opacity-50"
+                  >
+                    {generatingId === d.id ? "Membuat..." : "Buat Kode Pairing"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ))}

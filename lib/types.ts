@@ -89,3 +89,12 @@ export interface EmergencyNotice {
   published_at: string | null;
   created_at: string;
 }
+
+/** Kode PIN sekali-pakai untuk memasangkan TV ke sebuah layar tanpa mengetik slug. */
+export interface PairingCode {
+  id: string;
+  display_id: string;
+  code: string;
+  expires_at: string;
+  created_at: string;
+}

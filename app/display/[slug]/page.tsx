@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Display, EmergencyNotice, PlaylistItem, RemoteCommand, Schedule } from "@/lib/types";
-import { resolveActiveSchedule } from "@/lib/utils";
+import { PAIRING_STORAGE_KEY, resolveActiveSchedule } from "@/lib/utils";
 import EmergencyOverlay from "@/components/EmergencyOverlay";
 import SlideStage from "@/components/SlideStage";
 
 export default function DisplayPlayerPage() {
   const params = useParams<{ slug: string }>();
+  const router = useRouter();
   const slug = params.slug;
 
   const [supabase] = useState(() => createClient());
@@ -305,6 +306,11 @@ export default function DisplayPlayerPage() {
   const marqueeText = display.marquee_enabled ? display.marquee_text.trim() : "";
   const marqueeDuration = Math.max(15, marqueeText.length * 0.28);
 
+  function unpair() {
+    window.localStorage.removeItem(PAIRING_STORAGE_KEY);
+    router.replace("/display");
+  }
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
       {!fsActive && (
@@ -315,6 +321,14 @@ export default function DisplayPlayerPage() {
           ⛶ Layar penuh
         </button>
       )}
+
+      <button
+        onClick={unpair}
+        className="absolute bottom-3 right-3 z-30 rounded-md border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] text-white/30 backdrop-blur hover:border-white/30 hover:text-white/60"
+        title="Lepas pasangan layar ini dan kembali ke halaman pairing"
+      >
+        ↺ Lepas pasangan
+      </button>
 
       <div className="absolute inset-0">
         {!currentItem?.media ? (
