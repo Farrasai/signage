@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Display, EmergencyNotice, PlaylistItem, RemoteCommand, Schedule } from "@/lib/types";
-import { resolveActiveSchedule, youtubeEmbedUrl } from "@/lib/utils";
-import AgendaTable from "@/components/AgendaTable";
+import { resolveActiveSchedule } from "@/lib/utils";
 import EmergencyOverlay from "@/components/EmergencyOverlay";
+import SlideStage from "@/components/SlideStage";
 
 export default function DisplayPlayerPage() {
   const params = useParams<{ slug: string }>();
@@ -319,43 +319,8 @@ export default function DisplayPlayerPage() {
       <div className="absolute inset-0">
         {!currentItem?.media ? (
           <WaitingScreen name={display.name} hasPlaylist={Boolean(activePlaylistId)} />
-        ) : currentItem.media.type === "image" ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={currentItem.id}
-            src={currentItem.media.url}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        ) : currentItem.media.type === "video" ? (
-          <video
-            key={currentItem.id}
-            src={currentItem.media.url}
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            playsInline
-            onEnded={advance}
-          />
-        ) : currentItem.media.type === "table" ? (
-          currentItem.media.content && (
-            <AgendaTable
-              title={currentItem.media.content.title}
-              columns={currentItem.media.content.columns}
-              rows={currentItem.media.content.rows}
-            />
-          )
         ) : (
-          <iframe
-            key={currentItem.id}
-            src={youtubeEmbedUrl(
-              currentItem.media.type as "youtube_video" | "youtube_playlist",
-              currentItem.media.url
-            )}
-            className="h-full w-full"
-            allow="autoplay; encrypted-media; fullscreen"
-            frameBorder={0}
-          />
+          <SlideStage items={items} currentIndex={currentIndex} onVideoEnded={advance} />
         )}
       </div>
 
