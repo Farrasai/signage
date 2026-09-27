@@ -19,7 +19,7 @@ export default function Modal({
       onClick={onClose}
     >
       <div
-        className={`w-full ${width} rounded-xl border border-border bg-surface p-6 shadow-2xl`}
+        className={`w-full ${width} rounded-2xl border border-border bg-surface p-6`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">

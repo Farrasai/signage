@@ -109,7 +109,7 @@ export default function SchedulesPage() {
         <button
           onClick={() => setShowAdd(true)}
           disabled={!canCreate}
-          className="rounded-lg bg-signal px-4 py-2 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-40"
+          className="rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-40"
         >
           + Buat jadwal
         </button>
@@ -122,7 +122,7 @@ export default function SchedulesPage() {
       )}
 
       {!loading && schedules.length === 0 && canCreate && (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center text-text-muted">
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-text-muted">
           Belum ada jadwal. Semua layar memakai playlist default-nya.
         </div>
       )}
@@ -131,7 +131,7 @@ export default function SchedulesPage() {
         {schedules.map((s) => (
           <div
             key={s.id}
-            className="flex items-center justify-between rounded-xl border border-border bg-surface p-4"
+            className="flex items-center justify-between rounded-2xl border border-border bg-surface p-4"
           >
             <div>
               <p className="font-medium">
@@ -197,7 +197,7 @@ export default function SchedulesPage() {
                     onClick={() => toggleDay(d.value)}
                     className={`rounded-md px-2.5 py-1.5 text-xs ${
                       form.days.has(d.value)
-                        ? "bg-signal text-[#160a05]"
+                        ? "bg-signal text-white"
                         : "border border-border text-text-muted"
                     }`}
                   >
@@ -245,7 +245,7 @@ export default function SchedulesPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Buat jadwal"}
             </button>

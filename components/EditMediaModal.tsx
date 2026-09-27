@@ -207,7 +207,7 @@ export default function EditMediaModal({
                 <button
                   type="button"
                   onClick={addColumn}
-                  className="rounded-lg border border-dashed border-border px-3 py-1.5 text-sm text-text-muted hover:border-signal/50"
+                  className="rounded-md border border-dashed border-border px-3 py-1.5 text-sm text-text-muted hover:border-signal/50"
                 >
                   + Kolom
                 </button>
@@ -229,14 +229,14 @@ export default function EditMediaModal({
                 <button
                   type="button"
                   onClick={handleParsePaste}
-                  className="rounded-lg border border-border px-3 py-1.5 text-xs hover:border-signal/50"
+                  className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-signal/50"
                 >
                   Proses tempelan → tambahkan ke tabel
                 </button>
                 <button
                   type="button"
                   onClick={addEmptyRow}
-                  className="rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-text-muted hover:border-signal/50"
+                  className="rounded-md border border-dashed border-border px-3 py-1.5 text-xs text-text-muted hover:border-signal/50"
                 >
                   + Baris kosong
                 </button>
@@ -390,14 +390,14 @@ export default function EditMediaModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-lg border border-border px-4 py-2.5 text-sm text-text-muted hover:text-text"
+            className="flex-1 rounded-md border border-border px-4 py-2.5 text-sm text-text-muted hover:text-text"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+            className="flex-1 rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Menyimpan..." : "Simpan perubahan"}
           </button>

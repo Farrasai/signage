@@ -25,9 +25,9 @@ export default function Sidebar() {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+            className={`rounded-md px-3 py-2 text-sm transition-colors ${
               active
-                ? "bg-signal-soft text-signal"
+                ? "bg-signal-soft text-text font-medium"
                 : "text-text-muted hover:bg-surface-2 hover:text-text"
             }`}
           >
@@ -40,9 +40,9 @@ export default function Sidebar() {
 
       <Link
         href="/dashboard/emergency"
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+        className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm transition-colors ${
           emergencyActive
-            ? "bg-danger/15 text-danger"
+            ? "bg-danger/15 text-danger font-medium"
             : "text-text-muted hover:bg-danger/10 hover:text-danger"
         }`}
       >

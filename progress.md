@@ -7,6 +7,31 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-09-28] Redesign Tampilan UI Sistem (Auros Design System)
+
+- **Status:** ✅ Selesai
+- **File diubah:**
+  - `app/globals.css`: Konfigurasi token Auros (`--bg: #012624`, `--surface: #003734`, `--surface-2: #011d1c`, `--border: rgba(255,255,255,0.08)`, `--text: #ffffff`, `--text-muted: #bbc7c6`, `--signal: #00827c`, `--lavender: #fde9ff`, `--liquid-mist: #edfffe`, `.btn-aurora`).
+  - `app/dashboard/page.tsx`: Card border radius 16px (`rounded-2xl`), angka statistik dengan aksen lavender (`text-lavender`), CTA empty state `btn-aurora`.
+  - `app/dashboard/displays/page.tsx`: Card `rounded-2xl`, tombol CTA `btn-aurora`, modal buttons `rounded-md`.
+  - `app/dashboard/media/page.tsx`: Card `rounded-2xl`, tombol CTA dan submit tab `btn-aurora`, action buttons `rounded-md`.
+  - `app/dashboard/playlists/page.tsx`: Card & empty state `rounded-2xl`, tombol CTA `btn-aurora`.
+  - `app/dashboard/playlists/[id]/page.tsx`: Card item `rounded-2xl`, tombol CTA `btn-aurora`, item picker `rounded-md`.
+  - `app/dashboard/schedules/page.tsx`: Card & empty state `rounded-2xl`, tombol CTA `btn-aurora`, toggle hari `bg-signal text-white`.
+  - `app/dashboard/emergency/page.tsx`: Alert active banner & preview container `rounded-2xl`, tombol aksi `rounded-md`.
+  - `app/display/page.tsx`: Background diganti token `bg-bg`, tombol submit `btn-aurora`.
+  - `app/login/page.tsx`: Tombol masuk `btn-aurora`.
+  - `components/Modal.tsx`: Container `rounded-2xl`, menghapus `shadow-2xl` sesuai spec (depth via surface color).
+  - `components/Sidebar.tsx`: Nav items `rounded-md`, active state `bg-signal-soft text-text font-medium`.
+  - `components/SignOutButton.tsx`: Tombol `rounded-md`.
+  - `components/EditMediaModal.tsx`: Tombol submit `btn-aurora` dengan `rounded-md`.
+- **Catatan teknis:**
+  - Player TV (`/display/[slug]`) tetap dipertahankan sesuai kesepakatan agar tampilan TV tetap bersih.
+  - Build ✅ (`npm run build`)
+  - Lint ✅ (`npx eslint . --max-warnings=999`)
+
+---
+
 ### [2026-09-28] Stat Cards & Activity Log di Halaman Ringkasan
 
 - **Status:** ✅ Selesai
@@ -114,4 +139,4 @@ signage/
 
 ---
 
-_Terakhir diperbarui: 2026-09-27_
+_Terakhir diperbarui: 2026-09-28_

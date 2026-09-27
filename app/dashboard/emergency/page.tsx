@@ -113,7 +113,7 @@ export default function EmergencyPage() {
       </header>
 
       {notice?.is_active && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3.5">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3.5">
           <div className="flex items-center gap-2.5 text-sm text-danger">
             <span className="h-2 w-2 animate-pulse rounded-full bg-danger" />
             Sedang tayang di {activeTargetCount} layar sejak {formatDateTime(notice.published_at)}
@@ -121,7 +121,7 @@ export default function EmergencyPage() {
           <button
             onClick={handleClose}
             disabled={saving}
-            className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             Tutup Pengumuman di Semua Layar
           </button>
@@ -207,7 +207,7 @@ export default function EmergencyPage() {
           <button
             type="submit"
             disabled={saving || loading}
-            className="w-full rounded-lg bg-danger px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md bg-danger px-4 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
           >
             {saving
               ? "Menayangkan..."
@@ -220,7 +220,7 @@ export default function EmergencyPage() {
 
         <div>
           <p className="mb-2 text-sm text-text-muted">Pratinjau tampilan di layar</p>
-          <div className="relative aspect-video overflow-hidden rounded-xl border border-border bg-black">
+          <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-black">
             <div className="absolute inset-0 flex items-center justify-center text-xs text-white/20">
               Konten layar
             </div>

@@ -132,21 +132,21 @@ export default function DisplaysPage() {
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="rounded-lg bg-signal px-4 py-2 text-sm font-medium text-[#160a05] hover:opacity-90"
+          className="rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
         >
           + Tambah layar
         </button>
       </header>
 
       {!loading && displays.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center text-text-muted">
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-text-muted">
           Belum ada layar. Klik &ldquo;Tambah layar&rdquo; untuk mulai.
         </div>
       )}
 
       <div className="space-y-3">
         {displays.map((d) => (
-          <div key={d.id} className="rounded-xl border border-border bg-surface p-4">
+          <div key={d.id} className="rounded-2xl border border-border bg-surface p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <input
@@ -304,7 +304,7 @@ export default function DisplaysPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Buat layar"}
             </button>
@@ -321,13 +321,13 @@ export default function DisplaysPage() {
           <div className="mt-5 flex justify-end gap-2">
             <button
               onClick={() => setConfirmDelete(null)}
-              className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text"
+              className="rounded-md border border-border px-4 py-2 text-sm text-text-muted hover:text-text"
             >
               Batal
             </button>
             <button
               onClick={() => deleteDisplay(confirmDelete.id)}
-              className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Hapus
             </button>

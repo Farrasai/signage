@@ -87,7 +87,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {loading ? "Memeriksa..." : "Masuk"}
           </button>

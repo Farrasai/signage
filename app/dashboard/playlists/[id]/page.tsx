@@ -123,14 +123,14 @@ export default function PlaylistEditorPage() {
         />
         <button
           onClick={() => setShowPicker(true)}
-          className="shrink-0 rounded-lg bg-signal px-4 py-2 text-sm font-medium text-[#160a05] hover:opacity-90"
+          className="shrink-0 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
         >
           + Tambah konten
         </button>
       </header>
 
       {items.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center text-text-muted">
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-text-muted">
           Playlist masih kosong. Tambahkan foto, video, atau YouTube dari perpustakaan konten.
         </div>
       )}
@@ -139,7 +139,7 @@ export default function PlaylistEditorPage() {
         {items.map((item, index) => (
           <div
             key={item.id}
-            className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
           >
             <span className="w-6 text-center text-sm text-text-muted">{index + 1}</span>
             <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -208,7 +208,7 @@ export default function PlaylistEditorPage() {
                 <button
                   key={m.id}
                   onClick={() => addMedia(m.id)}
-                  className="flex w-full items-center justify-between rounded-lg border border-border px-3.5 py-2.5 text-left text-sm hover:border-signal/50"
+                  className="flex w-full items-center justify-between rounded-md border border-border px-3.5 py-2.5 text-left text-sm hover:border-signal/50"
                 >
                   <span className="truncate">{m.name}</span>
                   <span className="shrink-0 text-xs text-text-muted">{m.duration}s</span>

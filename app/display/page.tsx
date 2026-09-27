@@ -61,11 +61,11 @@ export default function DisplayPairingPage() {
   }
 
   if (checking) {
-    return <div className="h-screen w-screen bg-[#0a0c10]" />;
+    return <div className="h-screen w-screen bg-bg" />;
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#0a0c10] px-6 text-center">
+    <div className="flex h-screen w-screen flex-col items-center justify-center bg-bg px-6 text-center">
       <span className="mb-6 h-2.5 w-2.5 rounded-full bg-signal shadow-[0_0_12px_var(--signal)]" />
       <h1 className="font-display text-2xl font-semibold text-white sm:text-3xl">
         Pasangkan Layar Ini
@@ -97,7 +97,7 @@ export default function DisplayPairingPage() {
         <button
           type="submit"
           disabled={submitting || code.length < 4}
-          className="mt-4 w-full rounded-xl bg-signal px-4 py-3.5 text-base font-semibold text-[#160a05] hover:opacity-90 disabled:opacity-40"
+          className="mt-4 w-full rounded-md btn-aurora px-4 py-3.5 text-base font-semibold hover:opacity-90 disabled:opacity-40"
         >
           {submitting ? "Memeriksa..." : "Pasang Layar"}
         </button>

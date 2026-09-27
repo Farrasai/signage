@@ -282,21 +282,21 @@ export default function MediaPage() {
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="rounded-lg bg-signal px-4 py-2 text-sm font-medium text-[#160a05] hover:opacity-90"
+          className="rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
         >
           + Tambah konten
         </button>
       </header>
 
       {!loading && items.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center text-text-muted">
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-text-muted">
           Belum ada konten. Unggah foto/video, tambahkan link YouTube, atau link CDN.
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((m) => (
-          <div key={m.id} className="overflow-hidden rounded-xl border border-border bg-surface">
+          <div key={m.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
             <div className="flex h-32 items-center justify-center bg-surface-2">
               {m.type === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -453,7 +453,7 @@ export default function MediaPage() {
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Tambahkan"}
               </button>
@@ -526,7 +526,7 @@ export default function MediaPage() {
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Tambahkan"}
               </button>
@@ -566,7 +566,7 @@ export default function MediaPage() {
                   <button
                     type="button"
                     onClick={addColumn}
-                    className="rounded-lg border border-dashed border-border px-3 py-1.5 text-sm text-text-muted hover:border-signal/50"
+                    className="rounded-md border border-dashed border-border px-3 py-1.5 text-sm text-text-muted hover:border-signal/50"
                   >
                     + Kolom
                   </button>
@@ -591,14 +591,14 @@ export default function MediaPage() {
                   <button
                     type="button"
                     onClick={handleParsePaste}
-                    className="rounded-lg border border-border px-3 py-1.5 text-xs hover:border-signal/50"
+                    className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-signal/50"
                   >
                     Proses tempelan → tambahkan ke tabel
                   </button>
                   <button
                     type="button"
                     onClick={addEmptyRow}
-                    className="rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-text-muted hover:border-signal/50"
+                    className="rounded-md border border-dashed border-border px-3 py-1.5 text-xs text-text-muted hover:border-signal/50"
                   >
                     + Baris kosong
                   </button>
@@ -666,7 +666,7 @@ export default function MediaPage() {
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-[#160a05] hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Simpan tabel"}
               </button>
@@ -695,13 +695,13 @@ export default function MediaPage() {
           <div className="mt-5 flex justify-end gap-2">
             <button
               onClick={() => setConfirmDelete(null)}
-              className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text"
+              className="rounded-md border border-border px-4 py-2 text-sm text-text-muted hover:text-text"
             >
               Batal
             </button>
             <button
               onClick={() => deleteMedia(confirmDelete)}
-              className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Hapus
             </button>

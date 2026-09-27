@@ -1,17 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0a0c10;
-  --surface: #12151b;
-  --surface-2: #191d26;
-  --border: #262b36;
-  --text: #eef1f5;
-  --text-muted: #8b93a3;
-  --signal: #ff6a3d;
-  --signal-soft: #ff6a3d1a;
+  /* ── Auros Palette ── */
+  --bg: #012624;
+  --surface: #003734;
+  --surface-2: #011d1c;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #ffffff;
+  --text-muted: #bbc7c6;
+  --signal: #00827c;
+  --signal-soft: rgba(0, 130, 124, 0.1);
   --online: #35d68f;
-  --offline: #4b5262;
+  --offline: #707777;
   --danger: #ff5c5c;
+  --lavender: #fde9ff;
+  --liquid-mist: #edfffe;
 }
 
 @theme inline {
@@ -22,11 +25,14 @@
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
   --color-online: var(--online);
   --color-offline: var(--offline);
   --color-danger: var(--danger);
+  --color-lavender: var(--lavender);
+  --color-liquid-mist: var(--liquid-mist);
   --font-sans: var(--font-inter);
-  --font-display: var(--font-space);
+  --font-display: var(--font-inter);
 }
 
 html,
@@ -45,7 +51,13 @@ body {
 
 ::selection {
   background: var(--signal);
-  color: #0a0c10;
+  color: #012624;
+}
+
+/* ── Aurora gradient CTA button ── */
+.btn-aurora {
+  background: linear-gradient(90deg, #cbfffc 0%, #edfffe 26%, #fffdf9 48%, #fad1ff 89%);
+  color: #012624;
 }
 
 @keyframes marquee-scroll {
@@ -68,3 +80,4 @@ body {
     animation-duration: 1ms;
   }
 }
+
