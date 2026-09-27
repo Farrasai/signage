@@ -8,20 +8,81 @@ import { formatDateTime, isOnline, playerUrlFor } from "@/lib/utils";
 import StatusDot from "@/components/StatusDot";
 import RemoteControls from "@/components/RemoteControls";
 
+type ActivityEntry = {
+  id: string;
+  label: string;
+  timestamp: string;
+  icon: string;
+};
+
 export default function OverviewPage() {
   const [displays, setDisplays] = useState<Display[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [mediaCount, setMediaCount] = useState<number>(0);
+  const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: d }, { data: p }] = await Promise.all([
+    const [
+      { data: d },
+      { data: p },
+      { count: mc },
+      { data: recentDisplays },
+      { data: recentMedia },
+      { data: seenDisplays },
+    ] = await Promise.all([
       supabase.from("displays").select("*").order("created_at", { ascending: false }),
       supabase.from("playlists").select("*"),
+      supabase.from("media").select("*", { count: "exact", head: true }),
+      supabase
+        .from("displays")
+        .select("id, name, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("media")
+        .select("id, name, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("displays")
+        .select("id, name, last_seen")
+        .not("last_seen", "is", null)
+        .order("last_seen", { ascending: false })
+        .limit(5),
     ]);
+
     setDisplays(d ?? []);
     setPlaylists(p ?? []);
+    setMediaCount(mc ?? 0);
+
+    // Gabungkan semua entri aktivitas lalu urutkan terbaru
+    const entries: ActivityEntry[] = [
+      ...(recentDisplays ?? []).map((r) => ({
+        id: `display-added-${r.id}`,
+        label: `Layar "${r.name}" ditambahkan`,
+        timestamp: r.created_at as string,
+        icon: "🖥",
+      })),
+      ...(recentMedia ?? []).map((r) => ({
+        id: `media-added-${r.id}`,
+        label: `Konten "${r.name}" ditambahkan`,
+        timestamp: r.created_at as string,
+        icon: "🎞",
+      })),
+      ...(seenDisplays ?? []).map((r) => ({
+        id: `display-seen-${r.id}`,
+        label: `Layar "${r.name}" terakhir online`,
+        timestamp: r.last_seen as string,
+        icon: "🟢",
+      })),
+    ];
+
+    entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    setActivities(entries.slice(0, 10));
+
     setLoading(false);
   }, []);
 
@@ -55,6 +116,13 @@ export default function OverviewPage() {
 
   const onlineCount = displays.filter((d) => isOnline(d.last_seen)).length;
 
+  const stats: { label: string; value: number; icon: string; href: string | null; accent?: boolean }[] = [
+    { label: "Total Layar", value: displays.length, icon: "🖥", href: "/dashboard/displays" },
+    { label: "Total Konten", value: mediaCount, icon: "🎞", href: "/dashboard/media" },
+    { label: "Total Playlist", value: playlists.length, icon: "📋", href: "/dashboard/playlists" },
+    { label: "Layar Online", value: onlineCount, icon: "●", href: null, accent: true },
+  ];
+
   return (
     <div>
       <header className="mb-7">
@@ -65,6 +133,39 @@ export default function OverviewPage() {
             : `${onlineCount} dari ${displays.length} layar sedang online.`}
         </p>
       </header>
+
+      {/* Stat Cards */}
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {stats.map((s) => {
+          const card = (
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-signal/40">
+              <span
+                className={`text-base leading-none ${s.accent ? "text-online" : "text-text-muted"}`}
+              >
+                {s.icon}
+              </span>
+              <p
+                className={`text-3xl font-semibold tabular-nums ${s.accent ? "text-online" : ""}`}
+              >
+                {loading ? (
+                  <span className="text-2xl text-text-muted">—</span>
+                ) : (
+                  s.value
+                )}
+              </p>
+              <p className="text-xs text-text-muted">{s.label}</p>
+            </div>
+          );
+
+          return s.href ? (
+            <Link key={s.label} href={s.href}>
+              {card}
+            </Link>
+          ) : (
+            <div key={s.label}>{card}</div>
+          );
+        })}
+      </div>
 
       {!loading && displays.length === 0 && (
         <div className="rounded-xl border border-dashed border-border p-10 text-center">
@@ -121,6 +222,24 @@ export default function OverviewPage() {
           </div>
         ))}
       </div>
+
+      {/* Activity Log */}
+      {!loading && activities.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-4 font-display text-base font-semibold">Aktivitas Terbaru</h2>
+          <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+            {activities.map((a) => (
+              <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="shrink-0 text-sm leading-none">{a.icon}</span>
+                <p className="min-w-0 flex-1 truncate text-sm">{a.label}</p>
+                <time className="shrink-0 text-xs text-text-muted">
+                  {formatDateTime(a.timestamp)}
+                </time>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
