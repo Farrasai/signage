@@ -71,8 +71,7 @@ export default function DisplayPairingPage() {
         Pasangkan Layar Ini
       </h1>
       <p className="mt-2 max-w-sm text-sm text-white/50">
-        Masukkan kode pairing 6 digit yang diberikan admin. Cukup sekali — layar ini akan
-        mengingatnya sendiri setelahnya, walau TV dimatikan/dinyalakan lagi.
+        Masukkan kode pairing 6 digit yang diberikan admin.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 w-full max-w-xs">
@@ -104,8 +103,7 @@ export default function DisplayPairingPage() {
       </form>
 
       <p className="mt-10 max-w-xs text-xs text-white/30">
-        Belum punya kode? Buat dari dashboard → Layar &amp; TV → tombol &ldquo;Buat Kode
-        Pairing&rdquo; pada layar yang dituju.
+        Belum punya kode? Tanya Admin
       </p>
     </div>
   );
