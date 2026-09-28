@@ -30,10 +30,29 @@ function readVideoDuration(file: File): Promise<number> {
 const TYPE_LABEL: Record<MediaType, string> = {
   image: "Foto",
   video: "Video",
-  youtube_video: "YouTube (video)",
-  youtube_playlist: "YouTube (playlist)",
+  youtube_video: "YouTube",
+  youtube_playlist: "YouTube",
   table: "Tabel",
 };
+
+const TYPE_BADGE: Record<MediaType, string> = {
+  image: "bg-signal/15 text-liquid-mist",
+  video: "bg-purple-500/15 text-purple-300",
+  youtube_video: "bg-red-500/15 text-red-400",
+  youtube_playlist: "bg-red-500/15 text-red-400",
+  table: "bg-amber-500/15 text-amber-400",
+};
+
+type FilterType = "semua" | MediaType;
+type ViewMode = "grid" | "list";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function MediaPage() {
   const [items, setItems] = useState<Media[]>([]);
@@ -44,6 +63,11 @@ export default function MediaPage() {
   const [progressLabel, setProgressLabel] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Media | null>(null);
   const [editingItem, setEditingItem] = useState<Media | null>(null);
+
+  // toolbar state
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterType>("semua");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const [ytUrl, setYtUrl] = useState("");
   const [ytName, setYtName] = useState("");
@@ -76,6 +100,25 @@ export default function MediaPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  // derived: filtered items
+  const filtered = items.filter((m) => {
+    const matchFilter =
+      filter === "semua" ||
+      (filter === "youtube_video" && (m.type === "youtube_video" || m.type === "youtube_playlist")) ||
+      m.type === filter;
+    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase());
+    return matchFilter && matchSearch;
+  });
+
+  // counts per type for pill badges
+  const counts = {
+    semua: items.length,
+    image: items.filter((m) => m.type === "image").length,
+    video: items.filter((m) => m.type === "video").length,
+    youtube_video: items.filter((m) => m.type === "youtube_video" || m.type === "youtube_playlist").length,
+    table: items.filter((m) => m.type === "table").length,
+  };
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -270,91 +313,297 @@ export default function MediaPage() {
     load();
   }
 
+  // pill filters config
+  const PILLS: { key: FilterType; label: string; count: number }[] = [
+    { key: "semua", label: "Semua", count: counts.semua },
+    { key: "image", label: "Foto", count: counts.image },
+    { key: "video", label: "Video", count: counts.video },
+    { key: "youtube_video", label: "YouTube", count: counts.youtube_video },
+    { key: "table", label: "Tabel", count: counts.table },
+  ];
+
+  // duration input inline (shared by grid and list)
+  function DurationInput({ m }: { m: Media }) {
+    return (
+      <label className="flex items-center gap-1.5 text-xs text-text-muted">
+        <input
+          type="number"
+          min={1}
+          defaultValue={m.duration}
+          onBlur={(e) => {
+            const val = parseInt(e.target.value, 10);
+            if (val > 0 && val !== m.duration) updateDuration(m.id, val);
+          }}
+          className="w-14 rounded-md border border-border bg-surface-2 px-1.5 py-1 text-center outline-none focus:border-signal"
+          aria-label={`Durasi ${m.name}`}
+        />
+        <span>dtk</span>
+      </label>
+    );
+  }
+
+  // thumbnail for grid and list view
+  function Thumb({ m, className }: { m: Media; className?: string }) {
+    if (m.type === "image") {
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={m.url} alt={m.name} className={`object-cover ${className ?? ""}`} />;
+    }
+    if (m.type === "video") {
+      return <video src={m.url} className={`object-cover ${className ?? ""}`} muted />;
+    }
+    if (m.type === "table") {
+      return (
+        <div className={`flex flex-col items-center justify-center gap-0.5 bg-surface-2 text-text-muted ${className ?? ""}`}>
+          <span className="text-xl">▦</span>
+          <span className="text-[9px]">{m.content?.columns.length ?? 0}k · {m.content?.rows.length ?? 0}b</span>
+        </div>
+      );
+    }
+    return (
+      <div className={`flex items-center justify-center bg-surface-2 text-red-400 ${className ?? ""}`}>
+        <span className="text-xl">▶</span>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <header className="mb-7 flex items-center justify-between">
+      <header className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-semibold">Konten</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Foto dan video disimpan di CDN Supabase Storage, tautkan video/playlist YouTube,
-            pakai link CDN lain seperti Cloudinary, atau buat tabel agenda/pengumuman.
+            Foto/video dari Supabase Storage, YouTube, link CDN, atau tabel agenda.
           </p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+          className="shrink-0 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
         >
           + Tambah konten
         </button>
       </header>
 
-      {!loading && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-text-muted">
-          Belum ada konten. Unggah foto/video, tambahkan link YouTube, atau link CDN.
+      {/* Toolbar: Search + Filter Pills + View Toggle */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-text-muted text-sm">
+            ⌕
+          </span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari nama konten..."
+            className="w-full rounded-md border border-border bg-surface-2 py-2 pl-8 pr-3 text-sm outline-none focus:border-signal"
+            aria-label="Cari konten"
+          />
+        </div>
+
+        {/* Filter pills */}
+        <div className="flex flex-wrap gap-1">
+          {PILLS.map((pill) => (
+            <button
+              key={pill.key}
+              onClick={() => setFilter(pill.key)}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                filter === pill.key
+                  ? "bg-signal text-white"
+                  : "border border-border text-text-muted hover:border-signal/40 hover:text-text"
+              }`}
+            >
+              {pill.label}
+              <span
+                className={`rounded px-1 py-0.5 text-[10px] tabular-nums ${
+                  filter === pill.key ? "bg-white/20" : "bg-surface text-text-muted"
+                }`}
+              >
+                {pill.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* View toggle */}
+        <div className="flex rounded-md border border-border bg-surface-2 p-0.5">
+          <button
+            onClick={() => setViewMode("grid")}
+            aria-label="Tampilan grid"
+            title="Tampilan Grid"
+            className={`rounded px-2.5 py-1.5 text-sm transition-colors ${
+              viewMode === "grid" ? "bg-surface text-text" : "text-text-muted hover:text-text"
+            }`}
+          >
+            ⊞
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            aria-label="Tampilan list"
+            title="Tampilan List"
+            className={`rounded px-2.5 py-1.5 text-sm transition-colors ${
+              viewMode === "list" ? "bg-surface text-text" : "text-text-muted hover:text-text"
+            }`}
+          >
+            ☰
+          </button>
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-surface" />
+          ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((m) => (
-          <div key={m.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
-            <div className="flex h-32 items-center justify-center bg-surface-2">
-              {m.type === "image" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.url} alt={m.name} className="h-full w-full object-cover" />
-              ) : m.type === "video" ? (
-                <video src={m.url} className="h-full w-full object-cover" muted />
-              ) : m.type === "table" ? (
-                <div className="flex flex-col items-center gap-1 text-text-muted">
-                  <span className="text-2xl">▦</span>
-                  <span className="text-[10px]">
-                    {m.content?.columns.length ?? 0} kolom · {m.content?.rows.length ?? 0} baris
-                  </span>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-1 text-red-400">
-                  <span className="text-2xl">▶</span>
-                  <span className="text-[10px] text-text-muted">{TYPE_LABEL[m.type]}</span>
-                </div>
-              )}
-            </div>
-            <div className="p-3">
-              <p className="truncate text-sm font-medium">{m.name}</p>
-              <p className="mt-0.5 text-xs text-text-muted">{TYPE_LABEL[m.type]}</p>
-              <div className="mt-2.5 flex items-center justify-between gap-2">
-                <label className="flex items-center gap-1.5 text-xs text-text-muted">
-                  Durasi
-                  <input
-                    type="number"
-                    min={1}
-                    defaultValue={m.duration}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (val > 0 && val !== m.duration) updateDuration(m.id, val);
-                    }}
-                    className="w-14 rounded-md border border-border bg-surface-2 px-1.5 py-1 text-center outline-none focus:border-signal"
-                  />
-                  detik
-                </label>
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={() => setEditingItem(m)}
-                    className="text-xs text-text-muted hover:text-signal"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(m)}
-                    className="text-xs text-text-muted hover:text-danger"
-                  >
-                    Hapus
-                  </button>
+      {/* Empty state: no media in DB at all */}
+      {!loading && items.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
+          <p className="text-sm font-medium text-text">Perpustakaan konten kosong</p>
+          <p className="mt-1 text-sm text-text-muted">
+            Unggah foto/video, tambahkan link YouTube, atau buat tabel agenda.
+          </p>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="mt-4 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+          >
+            + Tambah konten pertama
+          </button>
+        </div>
+      )}
+
+      {/* Empty state: filter/search no results */}
+      {!loading && items.length > 0 && filtered.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+          <p className="text-sm text-text-muted">
+            Tidak ada konten yang sesuai dengan filter atau kata kunci.
+          </p>
+          <button
+            onClick={() => { setSearch(""); setFilter("semua"); }}
+            className="mt-3 text-xs text-signal hover:underline"
+          >
+            Reset filter
+          </button>
+        </div>
+      )}
+
+      {/* Grid view */}
+      {!loading && filtered.length > 0 && viewMode === "grid" && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((m) => (
+            <div key={m.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
+              <div className="relative flex h-32 items-center justify-center overflow-hidden bg-surface-2">
+                <Thumb m={m} className="h-full w-full" />
+                <span className={`absolute left-2 top-2 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[m.type]}`}>
+                  {TYPE_LABEL[m.type]}
+                </span>
+              </div>
+              <div className="p-3">
+                <p className="truncate text-sm font-medium">{m.name}</p>
+                <div className="mt-2.5 flex items-center justify-between gap-2">
+                  <DurationInput m={m} />
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={() => setEditingItem(m)}
+                      className="text-xs text-text-muted hover:text-signal"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(m)}
+                      className="text-xs text-text-muted hover:text-danger"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
+      {/* List view */}
+      {!loading && filtered.length > 0 && viewMode === "list" && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted">
+                  Konten
+                </th>
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted sm:table-cell">
+                  Tipe
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted">
+                  Durasi
+                </th>
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted md:table-cell">
+                  Ditambahkan
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-text-muted">
+                  Aksi
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((m, idx) => (
+                <tr
+                  key={m.id}
+                  className={`border-b border-border last:border-0 hover:bg-surface-2 transition-colors ${
+                    idx % 2 === 1 ? "bg-surface-2/30" : ""
+                  }`}
+                >
+                  {/* Nama + thumbnail */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md">
+                        <Thumb m={m} className="h-full w-full" />
+                      </div>
+                      <span className="truncate font-medium">{m.name}</span>
+                    </div>
+                  </td>
+                  {/* Tipe badge */}
+                  <td className="hidden px-4 py-3 sm:table-cell">
+                    <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${TYPE_BADGE[m.type]}`}>
+                      {TYPE_LABEL[m.type]}
+                    </span>
+                  </td>
+                  {/* Durasi inline */}
+                  <td className="px-4 py-3">
+                    <DurationInput m={m} />
+                  </td>
+                  {/* Tanggal */}
+                  <td className="hidden px-4 py-3 text-xs text-text-muted md:table-cell">
+                    {m.created_at ? formatDate(m.created_at) : "-"}
+                  </td>
+                  {/* Aksi */}
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => setEditingItem(m)}
+                        className="text-xs text-text-muted hover:text-signal"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(m)}
+                        className="text-xs text-text-muted hover:text-danger"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal: tambah konten */}
       {showAdd && (
         <Modal
           title="Tambah konten"
@@ -593,7 +842,7 @@ export default function MediaPage() {
                     onClick={handleParsePaste}
                     className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-signal/50"
                   >
-                    Proses tempelan → tambahkan ke tabel
+                    Proses tempelan &rarr; tambahkan ke tabel
                   </button>
                   <button
                     type="button"
