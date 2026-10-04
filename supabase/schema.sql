@@ -78,6 +78,18 @@ create table if not exists emergency_notice (
 );
 insert into emergency_notice (id) values (1) on conflict (id) do nothing;
 
+-- Antrean pengumuman bersuara (FIFO). Setiap baris = satu pengumuman.
+-- target_display_ids kosong ('{}') berarti ke semua layar.
+create table if not exists announcer_queue (
+  id uuid primary key default gen_random_uuid(),
+  label text not null default 'Pengumuman',
+  audio_url text not null,
+  repeat_count int not null default 1 check (repeat_count between 1 and 3),
+  target_display_ids uuid[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_announcer_queue_created on announcer_queue(created_at asc);
+
 -- Kode PIN sekali-pakai untuk memasangkan TV ke sebuah layar tanpa mengetik
 -- slug/URL panjang. Lihat kebijakan RLS di bawah — sengaja tidak bisa dibaca
 -- langsung oleh pengguna anonim, hanya lewat fungsi redeem_pairing_code().
@@ -101,6 +113,7 @@ alter publication supabase_realtime add table displays;
 alter publication supabase_realtime add table remote_commands;
 alter publication supabase_realtime add table emergency_notice;
 alter publication supabase_realtime add table display_pairing_codes;
+alter publication supabase_realtime add table announcer_queue;
 
 -- ---------- ROW LEVEL SECURITY ----------
 
@@ -112,6 +125,7 @@ alter table schedules enable row level security;
 alter table remote_commands enable row level security;
 alter table emergency_notice enable row level security;
 alter table display_pairing_codes enable row level security;
+alter table announcer_queue enable row level security;
 
 -- Layar TV (anonymous) hanya perlu baca konten & menulis status dirinya sendiri.
 create policy "public read displays" on displays for select using (true);
@@ -154,6 +168,13 @@ create policy "auth delete remote_commands" on remote_commands for delete to aut
 create policy "auth update emergency_notice" on emergency_notice
   for update to authenticated using (true) with check (true);
 
+-- Antrean pengumuman bersuara: anon bisa baca, admin insert + delete.
+create policy "public read announcer_queue" on announcer_queue for select using (true);
+create policy "auth insert announcer_queue" on announcer_queue
+  for insert to authenticated with check (true);
+create policy "auth delete announcer_queue" on announcer_queue
+  for delete to authenticated using (true);
+
 -- Kode pairing sengaja TIDAK punya policy baca untuk anon (lihat komentar di
 -- atas tabelnya) — hanya admin yang login yang boleh mengelolanya langsung.
 create policy "auth all display_pairing_codes" on display_pairing_codes
@@ -173,6 +194,20 @@ create policy "auth upload media bucket" on storage.objects for insert to authen
 
 create policy "auth delete media bucket" on storage.objects for delete to authenticated
   using (bucket_id = 'media');
+
+-- Bucket audio untuk pengumuman bersuara
+insert into storage.buckets (id, name, public)
+values ('announcer', 'announcer', true)
+on conflict (id) do nothing;
+
+create policy "public read announcer bucket" on storage.objects for select
+  using (bucket_id = 'announcer');
+
+create policy "auth upload announcer bucket" on storage.objects for insert to authenticated
+  with check (bucket_id = 'announcer');
+
+create policy "auth delete announcer bucket" on storage.objects for delete to authenticated
+  using (bucket_id = 'announcer');
 
 -- ---------- PAIRING TV LEWAT KODE PIN ----------
 -- Fungsi penukar kode → slug, dipanggil lewat RPC dari layar TV (anonim).

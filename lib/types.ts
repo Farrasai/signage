@@ -98,3 +98,15 @@ export interface PairingCode {
   expires_at: string;
   created_at: string;
 }
+
+/** Satu item dalam antrean pengumuman bersuara (FIFO). */
+export interface AnnouncerItem {
+  id: string;
+  label: string;
+  audio_url: string;
+  /** Berapa kali audio diputar sebelum berhenti otomatis (1–3). */
+  repeat_count: number;
+  /** Kosong ([]) = semua layar. Tidak kosong = hanya layar yang terdaftar. */
+  target_display_ids: string[];
+  created_at: string;
+}

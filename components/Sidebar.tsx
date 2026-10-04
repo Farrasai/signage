@@ -39,6 +39,18 @@ export default function Sidebar() {
       <div className="my-2 border-t border-border" />
 
       <Link
+        href="/dashboard/announcer"
+        className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm transition-colors ${
+          pathname.startsWith("/dashboard/announcer")
+            ? "bg-amber-500/15 text-amber-500 font-medium"
+            : "text-text-muted hover:bg-surface-2 hover:text-text"
+        }`}
+      >
+        <span aria-hidden>🎤</span>
+        Pengumuman Suara
+      </Link>
+
+      <Link
         href="/dashboard/emergency"
         className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm transition-colors ${
           emergencyActive

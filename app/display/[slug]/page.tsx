@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Display, EmergencyNotice, PlaylistItem, RemoteCommand, Schedule } from "@/lib/types";
+import type { Display, EmergencyNotice, PlaylistItem, RemoteCommand, Schedule, AnnouncerItem } from "@/lib/types";
 import { PAIRING_STORAGE_KEY, resolveActiveSchedule } from "@/lib/utils";
 import EmergencyOverlay from "@/components/EmergencyOverlay";
 import SlideStage from "@/components/SlideStage";
+import AnnouncerBadge from "@/components/AnnouncerBadge";
 
 export default function DisplayPlayerPage() {
   const params = useParams<{ slug: string }>();
@@ -22,10 +23,13 @@ export default function DisplayPlayerPage() {
   const [tick, setTick] = useState(0);
   const [fsActive, setFsActive] = useState(false);
   const [emergencyNotice, setEmergencyNotice] = useState<EmergencyNotice | null>(null);
+  const [announcerQueue, setAnnouncerQueue] = useState<AnnouncerItem[]>([]);
 
   const itemsRef = useRef<PlaylistItem[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playCountRef = useRef(0);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -201,6 +205,101 @@ export default function DisplayPlayerPage() {
         emergencyNotice.target_display_ids.includes(display.id))
   );
 
+  // ---------- Announcer: antrean pengumuman bersuara (FIFO) ----------
+  useEffect(() => {
+    if (!display) return;
+    let cancelled = false;
+
+    (async () => {
+      // Hanya ambil item dalam 1 jam terakhir — hindari replay item lama saat reconnect
+      // ponytail: filter berbasis created_at tanpa tulis DB (anon tidak bisa update)
+      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from("announcer_queue")
+        .select("*")
+        .order("created_at", { ascending: true })
+        .gte("created_at", since);
+
+      if (!cancelled) {
+        const mine = ((data ?? []) as AnnouncerItem[]).filter(
+          (item) =>
+            item.target_display_ids.length === 0 ||
+            item.target_display_ids.includes(display.id)
+        );
+        setAnnouncerQueue(mine);
+      }
+    })();
+
+    const channel = supabase
+      .channel(`announcer-${display.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "announcer_queue" },
+        (payload) => {
+          const item = payload.new as AnnouncerItem;
+          const isTarget =
+            item.target_display_ids.length === 0 ||
+            item.target_display_ids.includes(display.id);
+          if (isTarget) {
+            setAnnouncerQueue((q) => [...q, item]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "announcer_queue" },
+        (payload) =>
+          setAnnouncerQueue((q) =>
+            q.filter((i) => i.id !== (payload.old as { id: string }).id)
+          )
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [display, supabase]);
+
+  // ---------- Audio engine: putar item pertama di antrean, repeat N kali lalu lanjut ----------
+  const currentAnnouncer = announcerQueue[0] ?? null;
+
+  useEffect(() => {
+    if (!currentAnnouncer) {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      playCountRef.current = 0;
+      return;
+    }
+
+    const audio = new Audio(currentAnnouncer.audio_url);
+    audioRef.current = audio;
+    playCountRef.current = 0;
+
+    function onEnded() {
+      playCountRef.current += 1;
+      if (playCountRef.current < currentAnnouncer!.repeat_count) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      } else {
+        // Selesai semua pengulangan — lepas dari antrean lokal
+        setAnnouncerQueue((q) => q.slice(1));
+      }
+    }
+
+    audio.addEventListener("ended", onEnded);
+    audio.play().catch(() => {
+      // Browser blokir autoplay sebelum ada interaksi pengguna — silent fail
+    });
+
+    return () => {
+      audio.removeEventListener("ended", onEnded);
+      audio.pause();
+      audio.src = "";
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAnnouncer?.id]); // Re-run hanya saat item pertama berganti (by id)
+
   // ---------- Auto-advance timer for the current item ----------
   const currentItem = items[currentIndex];
   const paused = display?.is_paused ?? false;
@@ -348,6 +447,10 @@ export default function DisplayPlayerPage() {
             <span className="px-8">{marqueeText}</span>
           </div>
         </div>
+      )}
+
+      {currentAnnouncer && (
+        <AnnouncerBadge label={currentAnnouncer.label} />
       )}
 
       {showEmergency && emergencyNotice && (
