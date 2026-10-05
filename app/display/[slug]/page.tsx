@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Display, EmergencyNotice, PlaylistItem, RemoteCommand, Schedule, AnnouncerItem } from "@/lib/types";
+import type { Display, EmergencyNotice, PlaylistItem, RemoteCommand, Schedule, AnnouncerItem, Announcement, DayOfWeek } from "@/lib/types";
 import { PAIRING_STORAGE_KEY, resolveActiveSchedule } from "@/lib/utils";
 import EmergencyOverlay from "@/components/EmergencyOverlay";
 import SlideStage from "@/components/SlideStage";
@@ -24,12 +24,15 @@ export default function DisplayPlayerPage() {
   const [fsActive, setFsActive] = useState(false);
   const [emergencyNotice, setEmergencyNotice] = useState<EmergencyNotice | null>(null);
   const [announcerQueue, setAnnouncerQueue] = useState<AnnouncerItem[]>([]);
+  const [scheduledAnnouncements, setScheduledAnnouncements] = useState<Announcement[]>([]);
 
   const itemsRef = useRef<PlaylistItem[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playCountRef = useRef(0);
+  const lastTriggeredRef = useRef<Record<string, string>>({});
+  const playedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     itemsRef.current = items;
@@ -207,13 +210,12 @@ export default function DisplayPlayerPage() {
 
   // ---------- Announcer: antrean pengumuman bersuara (FIFO) ----------
   useEffect(() => {
-    if (!display) return;
+    if (!display?.id) return;
     let cancelled = false;
 
     (async () => {
-      // Hanya ambil item dalam 1 jam terakhir — hindari replay item lama saat reconnect
-      // ponytail: filter berbasis created_at tanpa tulis DB (anon tidak bisa update)
-      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      // Ambil hanya siaran langsung yang dibuat dalam 2 menit terakhir
+      const since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from("announcer_queue")
         .select("*")
@@ -223,10 +225,17 @@ export default function DisplayPlayerPage() {
       if (!cancelled) {
         const mine = ((data ?? []) as AnnouncerItem[]).filter(
           (item) =>
-            item.target_display_ids.length === 0 ||
-            item.target_display_ids.includes(display.id)
+            !playedIdsRef.current.has(item.id) &&
+            ((item.target_display_ids ?? []).length === 0 ||
+              (item.target_display_ids ?? []).includes(display.id))
         );
-        setAnnouncerQueue(mine);
+        if (mine.length > 0) {
+          setAnnouncerQueue((prev) => {
+            const existingIds = new Set(prev.map((i) => i.id));
+            const fresh = mine.filter((i) => !existingIds.has(i.id));
+            return [...prev, ...fresh];
+          });
+        }
       }
     })();
 
@@ -237,11 +246,13 @@ export default function DisplayPlayerPage() {
         { event: "INSERT", schema: "public", table: "announcer_queue" },
         (payload) => {
           const item = payload.new as AnnouncerItem;
-          const isTarget =
-            item.target_display_ids.length === 0 ||
-            item.target_display_ids.includes(display.id);
-          if (isTarget) {
-            setAnnouncerQueue((q) => [...q, item]);
+          const targetIds = item.target_display_ids ?? [];
+          const isTarget = targetIds.length === 0 || targetIds.includes(display.id);
+          if (isTarget && !playedIdsRef.current.has(item.id)) {
+            setAnnouncerQueue((q) => {
+              if (q.some((i) => i.id === item.id)) return q;
+              return [...q, item];
+            });
           }
         }
       )
@@ -259,7 +270,101 @@ export default function DisplayPlayerPage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [display, supabase]);
+  }, [display?.id, supabase]);
+
+  // ---------- Scheduled Announcements: Muat master pengumuman & dengarkan realtime ----------
+  useEffect(() => {
+    if (!display?.id) return;
+    let cancelled = false;
+
+    const fetchScheduled = async () => {
+      const { data } = await supabase
+        .from("announcements")
+        .select("*")
+        .eq("is_enabled", true);
+      if (!cancelled && data) {
+        setScheduledAnnouncements(data as Announcement[]);
+      }
+    };
+    fetchScheduled();
+
+    const channel = supabase
+      .channel(`announcements-${display.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "announcements" },
+        () => {
+          fetchScheduled();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [display?.id, supabase]);
+
+  // ---------- Scheduled Announcements Evaluator: Periksa kecocokan jam per 5 detik ----------
+  useEffect(() => {
+    if (!display?.id || scheduledAnnouncements.length === 0) return;
+
+    const DAY_CODES: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+    const evaluateSchedule = () => {
+      const now = new Date();
+      const currentDay = DAY_CODES[now.getDay()];
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const currentHHMM = `${hours}:${minutes}`;
+      const minuteKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${currentHHMM}`;
+
+      for (const ann of scheduledAnnouncements) {
+        if (!ann.is_enabled) continue;
+
+        // Cek target layar (null-safe)
+        const targetIds = ann.target_display_ids ?? [];
+        const isTarget = targetIds.length === 0 || targetIds.includes(display.id);
+        if (!isTarget) continue;
+
+        // Cek hari aktif (null-safe)
+        const days = ann.days_of_week ?? [];
+        const dayMatch = days.length === 0 || days.includes(currentDay);
+        if (!dayMatch) continue;
+
+        // Normalisasi format jam "HH:mm" (null-safe)
+        const [rawH = "", rawM = ""] = (ann.time ?? "").split(":");
+        const annHHMM = `${rawH.padStart(2, "0")}:${rawM.padStart(2, "0")}`;
+
+        if (annHHMM === currentHHMM) {
+          // Guard deduping per menit
+          if (lastTriggeredRef.current[ann.id] !== minuteKey) {
+            lastTriggeredRef.current[ann.id] = minuteKey;
+            const itemId = `sched-${ann.id}-${minuteKey}`;
+            if (!playedIdsRef.current.has(itemId)) {
+              playedIdsRef.current.add(itemId);
+              const item: AnnouncerItem = {
+                id: itemId,
+                label: ann.label,
+                audio_url: ann.audio_url,
+                repeat_count: ann.repeat_count || 1,
+                target_display_ids: targetIds,
+                created_at: new Date().toISOString(),
+              };
+              setAnnouncerQueue((q) => {
+                if (q.some((i) => i.id === itemId)) return q;
+                return [...q, item];
+              });
+            }
+          }
+        }
+      }
+    };
+
+    evaluateSchedule();
+    const interval = setInterval(evaluateSchedule, 5000);
+    return () => clearInterval(interval);
+  }, [display?.id, scheduledAnnouncements]);
 
   // ---------- Audio engine: putar item pertama di antrean, repeat N kali lalu lanjut ----------
   const currentAnnouncer = announcerQueue[0] ?? null;
@@ -276,20 +381,33 @@ export default function DisplayPlayerPage() {
     audioRef.current = audio;
     playCountRef.current = 0;
 
+    function finishItem() {
+      // Tandai ID ini sudah pernah diputar agar tidak diulang oleh query database
+      if (currentAnnouncer) {
+        playedIdsRef.current.add(currentAnnouncer.id);
+      }
+      setAnnouncerQueue((q) => q.slice(1));
+    }
+
     function onEnded() {
       playCountRef.current += 1;
-      if (playCountRef.current < currentAnnouncer!.repeat_count) {
+      if (playCountRef.current < (currentAnnouncer!.repeat_count || 1)) {
         audio.currentTime = 0;
-        audio.play().catch(() => {});
+        audio.play().catch(() => {
+          finishItem();
+        });
       } else {
-        // Selesai semua pengulangan — lepas dari antrean lokal
-        setAnnouncerQueue((q) => q.slice(1));
+        finishItem();
       }
     }
 
     audio.addEventListener("ended", onEnded);
-    audio.play().catch(() => {
-      // Browser blokir autoplay sebelum ada interaksi pengguna — silent fail
+    audio.play().catch((err) => {
+      console.warn("Autoplay audio tertahan browser (perlu klik/gesture di layar TV terlebih dahulu):", err);
+      // Agar antrean tidak macet jika autoplay diblokir browser:
+      setTimeout(() => {
+        finishItem();
+      }, 3000);
     });
 
     return () => {
@@ -298,7 +416,7 @@ export default function DisplayPlayerPage() {
       audio.src = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentAnnouncer?.id]); // Re-run hanya saat item pertama berganti (by id)
+  }, [currentAnnouncer?.id]); // Re-run hanya saat item pertama berganti (by id) // Re-run hanya saat item pertama berganti (by id)
 
   // ---------- Auto-advance timer for the current item ----------
   const currentItem = items[currentIndex];

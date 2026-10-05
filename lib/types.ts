@@ -110,3 +110,20 @@ export interface AnnouncerItem {
   target_display_ids: string[];
   created_at: string;
 }
+
+/** Master data pengumuman bersuara terjadwal (CRUD, jam tayang, repeat, target, switch aktif). */
+export interface Announcement {
+  id: string;
+  label: string;
+  audio_url: string;
+  /** Format "HH:mm" atau "HH:mm:ss" */
+  time: string;
+  /** Hari aktif. Kosong ([]) artinya berlaku setiap hari. */
+  days_of_week: DayOfWeek[];
+  /** Berapa kali audio diputar (1–3). */
+  repeat_count: number;
+  /** Kosong ([]) = semua layar. Tidak kosong = hanya layar yang terdaftar. */
+  target_display_ids: string[];
+  is_enabled: boolean;
+  created_at: string;
+}

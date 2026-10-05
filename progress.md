@@ -7,6 +7,72 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-05] Master Jadwal Pengumuman Suara (Scheduled Announcements & Management)
+
+- **Status:** ✅ Selesai
+- **File diubah / dibuat:**
+  - `supabase/migrations/20261005_announcements.sql`: DDL tabel `announcements` (CRUD, jam tayang `time`, hari aktif `days_of_week`, pengulangan `repeat_count`, target layar `target_display_ids`, switch `is_enabled`), Realtime publication, dan kebijakan RLS (public read, auth manage).
+  - `supabase/schema.sql`: Sinkronisasi skema instalasi baru untuk tabel `announcements`.
+  - `lib/types.ts`: Menambahkan interface `Announcement`.
+  - `app/display/[slug]/page.tsx`: Integrasi evaluasi jadwal pengumuman di TV player. TV mengecek jadwal aktif tiap 10 detik, memvalidasi kecocokan jam (`HH:mm`), hari, dan target layar dengan deduping guard per-menit, lalu memasukkannya ke antrean lokal audio engine tanpa mengganggu pemutaran video/slide.
+  - `app/dashboard/announcer/page.tsx`: Redesign antarmuka dengan 2 Tab terpadu:
+    1. **Jadwal Pengumuman**: Tabel master pengumuman, toggle on/off instan, mini audio preview player (▶/⏸), tombol "▶ Bunyikan Sekarang", tombol Edit modal, tombol Hapus (beserta pembersihan file audio di storage), dan modal form Tambah/Edit jadwal.
+    2. **Siaran Langsung & Antrean**: Form siaran dadakan langsung dan monitoring antrean live TV.
+- **Catatan teknis:**
+  - Evaluasi waktu berjalan mandiri di sisi browser TV (client-side scheduler) tanpa membutuhkan server cron tambahan.
+  - Perbaikan audio looping & scheduling: Menambahkan `playedIdsRef` untuk mencegah re-queue audio yang sudah selesai, isolasi dependency `display?.id` agar heartbeat tidak memicu query ulang tabel `announcer_queue`, normalisasi format jam `HH:mm` dan null-safe arrays, serta fallback 3 detik jika browser memblokir autoplay agar antrean tidak macet.
+  - Build ✅ (`npm run build`)
+  - Lint ✅ (`npx eslint . --max-warnings=999`)
+
+---
+
+### [2026-10-04] Fitur Announcer / Pengumuman Bersuara (Audio Broadcast FIFO)
+
+- **Status:** ✅ Selesai
+- **File diubah / dibuat:**
+  - `supabase/migrations/20261004_announcer.sql`: Storage bucket `announcer`, tabel `announcer_queue` (FIFO, repeat 1–3x, target display), RLS policies, index, dan Realtime publication.
+  - `supabase/schema.sql`: Sinkronisasi skema instalasi baru untuk tabel `announcer_queue` dan bucket `announcer`.
+  - `lib/types.ts`: Menambahkan interface `AnnouncerItem`.
+  - `components/AnnouncerBadge.tsx`: Floating badge 🎤 dengan indikator pulse merah di pojok kiri atas player TV.
+  - `app/dashboard/announcer/page.tsx`: Halaman kelola antrean pengumuman bersuara (monitoring live antrean, form upload audio mp3/wav/ogg, pengaturan repeat count 1–3x, pemilihan target layar, dan pembatalan item beserta pembersihan storage).
+  - `app/display/[slug]/page.tsx`: Integrasi audio engine antrean FIFO pada player TV. Memutar audio sekuensial sesuai pengulangan tanpa mengganggu jadwal/playlist (`SlideStage`), serta menampilkan floating badge saat audio aktif.
+  - `components/Sidebar.tsx`: Menambahkan menu navigasi "Pengumuman Suara" (🎤) dengan indikator aktif amber.
+- **Catatan teknis:**
+  - Non-interruptif: Konten visual tetap berputar normal di layar TV saat pengumuman suara berlangsung.
+  - Player TV mengelola antrean lokal murni berbasis Realtime INSERT/DELETE tanpa perlu izin tulis ke DB.
+  - Build ✅ (`npm run build`)
+  - Lint ✅ (`npx eslint . --max-warnings=999`)
+
+---
+
+### [2026-09-28] Dukungan Light Mode & Dark Mode (Auros Theme System)
+
+- **Status:** ✅ Selesai
+- **File diubah:**
+  - `app/globals.css`: Konfigurasi token Auros Light (`--bg: #f8fffe`, `--surface: #edf5f4`, `--text: #0d1f1e`, dll.) di `:root`, serta token Auros Dark di kelas `.dark`.
+  - `app/layout.tsx`: Skrip inline pencegah flash tema (anti-flash script) sebelum hidrasi React yang membaca preferensi dari `localStorage`.
+  - `components/Sidebar.tsx`: Hook `useTheme` dan tombol toggle mode terang/gelap (☾ / ☀) di bagian bawah sidebar.
+- **Catatan teknis:**
+  - Strategi CSS class pada elemen `<html>` tanpa dependency eksternal tambahan.
+  - Build ✅ Lint ✅
+
+---
+
+### [2026-09-28] Redesign Halaman Konten Media (Toolbar, Filter, & List View)
+
+- **Status:** ✅ Selesai
+- **File diubah:** `app/dashboard/media/page.tsx`
+- **Deskripsi:**
+  - Toolbar terpadu: Pencarian real-time, filter pills per tipe konten (`Semua`, `Foto`, `Video`, `YouTube`, `Tabel`) dengan counter badge otomatis, dan view switcher Grid ⊞ / List ☰.
+  - Tampilan List / Tabel: Menampilkan thumbnail 44px, nama konten, badge tipe berwarna, durasi inline (blur-to-save), tanggal dibuat, dan tombol aksi Edit/Hapus.
+  - Visual hierarchy: Badge tipe berwarna di pojok thumbnail (teal foto, ungu video, merah YouTube, amber tabel).
+  - UI Resilience: Loading skeleton 3 card dan empty state adaptif (perpustakaan kosong vs filter tidak ditemukan + tombol reset).
+- **Catatan teknis:**
+  - Mengikuti prinsip antislop (fungsional penuh, keyboard-accessible, semua tombol memiliki aksi nyata).
+  - Build ✅ Lint ✅
+
+---
+
 ### [2026-09-28] Redesign Tampilan UI Sistem (Auros Design System)
 
 - **Status:** ✅ Selesai
@@ -86,6 +152,7 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 signage/
 ├── app/
 │   ├── dashboard/
+│   │   ├── announcer/page.tsx     # Antrean & siaran pengumuman suara (audio broadcast)
 │   │   ├── displays/page.tsx      # Kelola layar & PIN pairing
 │   │   ├── emergency/page.tsx     # Siaran darurat
 │   │   ├── media/page.tsx         # Kelola konten media
@@ -98,16 +165,17 @@ signage/
 │   │   ├── [slug]/page.tsx        # Player fullscreen TV (anon)
 │   │   └── page.tsx               # Halaman pairing PIN
 │   ├── login/page.tsx             # Login admin
-│   ├── globals.css                # Token warna Tailwind v4
+│   ├── globals.css                # Token warna Tailwind v4 (Light/Dark)
 │   ├── layout.tsx
 │   └── page.tsx
 ├── components/
 │   ├── AgendaTable.tsx            # Tabel agenda (shared)
+│   ├── AnnouncerBadge.tsx         # Floating badge 🎤 pengumuman bersuara (player TV)
 │   ├── EditMediaModal.tsx         # Modal edit konten media
 │   ├── EmergencyOverlay.tsx       # Overlay darurat (shared)
 │   ├── Modal.tsx                  # Komponen modal generik
 │   ├── RemoteControls.tsx         # Kontrol remote dari dashboard
-│   ├── Sidebar.tsx                # Navigasi dashboard
+│   ├── Sidebar.tsx                # Navigasi dashboard + toggle tema
 │   ├── SignOutButton.tsx          # Tombol logout
 │   ├── SlideStage.tsx             # Mesin crossfade + prefetch (shared)
 │   └── StatusDot.tsx              # Indikator online/offline layar
@@ -118,10 +186,13 @@ signage/
 │   ├── types.ts                   # Type definitions
 │   └── utils.ts                   # Utility functions
 ├── supabase/
-│   └── schema.sql                 # Skema DB lengkap (referensi instalasi baru)
-├── proxy.ts                       # Middleware auth (Next.js 16)
-├── AGENTS.md                      # Aturan wajib untuk coding agent
-└── progress.md                    # File ini
+│   ├── migrations/
+│   │   ├── 20261004_announcer.sql     # Migrasi antrean pengumuman bersuara
+│   │   └── 20261005_announcements.sql # Migrasi master jadwal pengumuman
+│   └── schema.sql                     # Skema DB lengkap (referensi instalasi baru)
+├── proxy.ts                           # Middleware auth (Next.js 16)
+├── AGENTS.md                          # Aturan wajib untuk coding agent
+└── progress.md                        # File ini
 ```
 
 ---
@@ -139,4 +210,4 @@ signage/
 
 ---
 
-_Terakhir diperbarui: 2026-09-28_
+_Terakhir diperbarui: 2026-10-05_
