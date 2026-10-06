@@ -198,6 +198,18 @@ function SlideLayer({
           onEnded={() => {
             if (isCurrent) onVideoEnded();
           }}
+          onPause={(e) => {
+            // Android TV Audio Focus workaround: OS force-pauses muted videos when Audio plays.
+            if (isCurrent && !preloadOnly) {
+              const v = e.target as HTMLVideoElement;
+              // Ignore pauses at the very end
+              if (v.currentTime >= v.duration - 0.5) return;
+              v.play().catch((err) => {
+                console.warn("Decoder crashed or focus locked. Skipping video.", err);
+                onVideoEnded();
+              });
+            }
+          }}
         />
       ) : media.type === "table" && media.content ? (
         <ReadyOnMount onReady={onReady}>

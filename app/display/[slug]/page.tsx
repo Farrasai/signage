@@ -25,6 +25,7 @@ export default function DisplayPlayerPage() {
   const [emergencyNotice, setEmergencyNotice] = useState<EmergencyNotice | null>(null);
   const [announcerQueue, setAnnouncerQueue] = useState<AnnouncerItem[]>([]);
   const [scheduledAnnouncements, setScheduledAnnouncements] = useState<Announcement[]>([]);
+  const [serverOffsetMs, setServerOffsetMs] = useState<number>(0);
 
   const itemsRef = useRef<PlaylistItem[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,6 +48,19 @@ export default function DisplayPlayerPage() {
     }
     let cancelled = false;
     (async () => {
+      try {
+        const clientSent = Date.now();
+        const res = await fetch("/api/time", { cache: "no-store" });
+        if (res.ok && !cancelled) {
+          const { time } = await res.json();
+          const serverTime = new Date(time).getTime();
+          const roundtrip = Date.now() - clientSent;
+          setServerOffsetMs(serverTime - (clientSent + roundtrip / 2));
+        }
+      } catch (e) {
+        console.warn("Gagal sinkronisasi waktu server", e);
+      }
+
       const { data, error } = await supabase.from("displays").select("*").eq("slug", slug).maybeSingle();
       if (cancelled) return;
       if (error) {
@@ -312,7 +326,7 @@ export default function DisplayPlayerPage() {
     const DAY_CODES: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
     const evaluateSchedule = () => {
-      const now = new Date();
+      const now = new Date(Date.now() + serverOffsetMs);
       const currentDay = DAY_CODES[now.getDay()];
       const hours = String(now.getHours()).padStart(2, "0");
       const minutes = String(now.getMinutes()).padStart(2, "0");
@@ -364,7 +378,7 @@ export default function DisplayPlayerPage() {
     evaluateSchedule();
     const interval = setInterval(evaluateSchedule, 5000);
     return () => clearInterval(interval);
-  }, [display?.id, scheduledAnnouncements]);
+  }, [display?.id, scheduledAnnouncements, serverOffsetMs]);
 
   // ---------- Audio engine: putar item pertama di antrean, repeat N kali lalu lanjut ----------
   const currentAnnouncer = announcerQueue[0] ?? null;
@@ -429,7 +443,11 @@ export default function DisplayPlayerPage() {
     // Uploaded videos advance on their own "ended" event; only set a
     // safety timer if the operator explicitly overrode the duration.
     if (currentItem.media.type === "video" && !currentItem.duration_override) {
-      return;
+      // Fallback ekstrim: maksimal 3 menit jika event 'ended' tidak pernah jalan
+      timerRef.current = setTimeout(advance, 180000);
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
     }
 
     const seconds = currentItem.duration_override ?? currentItem.media.duration ?? 10;

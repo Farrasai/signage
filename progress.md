@@ -26,6 +26,21 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ---
 
+### [2026-10-06] Perbaikan Fitur Announcer (Ponytail Review)
+
+- **Status:** ✅ Selesai
+- **File diubah / dibuat:**
+  - `app/api/time/route.ts`: Membuat endpoint baru `/api/time` untuk memberikan waktu server yang akurat. File sempat terbuat kosong lalu di-repopulasi dengan standar `NextResponse`.
+  - `components/AnnouncerBadge.tsx`: Menghapus efek `backdrop-blur-sm` yang menyebabkan antarmuka nge-freeze/blank di OS Android TV yang minim VRAM.
+  - `components/SlideStage.tsx`: Menambahkan `onPause` handler pada tag `<video>` (Workaround: OS Android TV memiliki 'Audio Focus' yang nge-pause paksa video latar saat audio pengumuman dimainkan. Script akan berusaha melakukan resume atau me-skip video jika decoder terkunci).
+  - `app/display/[slug]/page.tsx`:
+    - Mengintegrasikan fetch `/api/time` saat player dimuat guna menghitung `serverOffsetMs`, sehingga `evaluateSchedule` mengacu ke waktu server, bukan waktu jam TV yang sering keliru (memperbaiki jadwal tak muncul).
+    - Menambahkan hard fallback timer 3 menit di auto-advance video supaya TV player tidak freeze abadi saat tag video gagal nge-trigger onEnded.
+- **Catatan teknis:**
+  - Build ✅ Lint ✅
+
+---
+
 ### [2026-10-04] Fitur Announcer / Pengumuman Bersuara (Audio Broadcast FIFO)
 
 - **Status:** ✅ Selesai
@@ -210,4 +225,4 @@ signage/
 
 ---
 
-_Terakhir diperbarui: 2026-10-05_
+_Terakhir diperbarui: 2026-10-06_
