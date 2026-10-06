@@ -26,6 +26,17 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ---
 
+### [2026-10-06] Penambahan Fitur Waktu Server di Sidebar (System Clock)
+
+- **Status:** ✅ Selesai
+- **File diubah / dibuat:**
+  - `components/SystemClock.tsx`: Membuat komponen baru untuk menampilkan waktu server secara real-time yang terus diperbarui setiap detik.
+  - `app/dashboard/layout.tsx`: Memasukkan komponen `SystemClock` ke bagian footer sidebar agar dapat diakses dari seluruh halaman dashboard.
+- **Catatan teknis:**
+  - Komponen melakukan fetch ke `/api/time` sekali di awal untuk mendapatkan `serverOffsetMs`, sehingga waktu yang ditampilkan tetap akurat sesuai zona waktu server tanpa harus terus menerus membebani server dengan request berkali-kali. Format penulisan menggunakan standar baku 24-jam beserta WIB.
+
+---
+
 ### [2026-10-06] Perbaikan Fitur Announcer (Ponytail Review)
 
 - **Status:** ✅ Selesai

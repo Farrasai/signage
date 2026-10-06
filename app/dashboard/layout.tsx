@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import Sidebar from "@/components/Sidebar";
 import SignOutButton from "@/components/SignOutButton";
 
+import SystemClock from "@/components/SystemClock";
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -28,6 +30,7 @@ export default async function DashboardLayout({
         </div>
         <Sidebar />
         <div className="mt-auto space-y-2 border-t border-border pt-4">
+          <SystemClock />
           <p className="truncate px-1 text-xs text-text-muted">{user.email}</p>
           <SignOutButton />
         </div>
