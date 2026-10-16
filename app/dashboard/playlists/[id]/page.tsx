@@ -119,11 +119,11 @@ export default function PlaylistEditorPage() {
         <input
           defaultValue={playlist?.name}
           onBlur={(e) => renamePlaylist(e.target.value)}
-          className="w-full max-w-md bg-transparent font-display text-2xl font-semibold outline-none focus:text-signal"
+          className="w-full max-w-md bg-transparent text-2xl font-semibold text-text outline-none focus:text-signal"
         />
         <button
           onClick={() => setShowPicker(true)}
-          className="shrink-0 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+          className="shrink-0 rounded-lg bg-signal px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Tambah konten
         </button>

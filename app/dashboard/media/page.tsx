@@ -370,14 +370,14 @@ export default function MediaPage() {
     <div>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold">Konten</h1>
+          <h1 className="text-2xl font-semibold text-text">Konten</h1>
           <p className="mt-1 text-sm text-text-muted">
             Foto/video dari Supabase Storage, YouTube, link CDN, atau tabel agenda.
           </p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="shrink-0 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+          className="shrink-0 rounded-md bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
         >
           + Tambah konten
         </button>
@@ -467,7 +467,7 @@ export default function MediaPage() {
           </p>
           <button
             onClick={() => setShowAdd(true)}
-            className="mt-4 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+            className="mt-4 rounded-md bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
           >
             + Tambah konten pertama
           </button>
@@ -702,7 +702,7 @@ export default function MediaPage() {
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Tambahkan"}
               </button>
@@ -775,7 +775,7 @@ export default function MediaPage() {
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Tambahkan"}
               </button>
@@ -915,7 +915,7 @@ export default function MediaPage() {
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Simpan tabel"}
               </button>

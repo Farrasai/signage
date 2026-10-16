@@ -1,4 +1,4 @@
-import { formatDateTime } from "@/lib/utils";
+﻿import { formatDateTime } from "@/lib/utils";
 
 export default function EmergencyOverlay({
   title,
@@ -20,7 +20,7 @@ export default function EmergencyOverlay({
           PERHATIAN
         </span>
 
-        <h2 className="mt-4 font-display text-xl font-bold uppercase leading-snug text-white sm:text-3xl">
+        <h2 className="mt-4 text-xl font-bold uppercase leading-snug text-white sm:text-3xl">
           {title}
         </h2>
 

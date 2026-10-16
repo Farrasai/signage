@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -105,7 +105,7 @@ export default function EmergencyPage() {
   return (
     <div>
       <header className="mb-7">
-        <h1 className="font-display text-2xl font-semibold">Darurat</h1>
+        <h1 className="text-2xl font-semibold">Darurat</h1>
         <p className="mt-1 text-sm text-text-muted">
           Tayangkan banner peringatan yang menimpa (overlay) seluruh tampilan pada layar yang
           dipilih — konten di baliknya tetap berjalan, penutupan hanya dari halaman ini.

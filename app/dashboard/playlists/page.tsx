@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -64,14 +64,14 @@ export default function PlaylistsPage() {
     <div>
       <header className="mb-7 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold">Playlist</h1>
+          <h1 className="text-2xl font-semibold">Playlist</h1>
           <p className="mt-1 text-sm text-text-muted">
             Susun urutan konten yang akan diputar bergantian di layar.
           </p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+          className="rounded-lg bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
         >
           + Buat playlist
         </button>
@@ -125,7 +125,7 @@ export default function PlaylistsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Buat playlist"}
             </button>

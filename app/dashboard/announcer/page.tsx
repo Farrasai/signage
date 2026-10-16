@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -364,7 +364,7 @@ export default function AnnouncerPage() {
       <header className="mb-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl font-semibold">Pengumuman Suara</h1>
+            <h1 className="text-2xl font-semibold">Pengumuman Suara</h1>
             <p className="mt-1 text-sm text-text-muted">
               Atur jadwal pengumuman otomatis atau siarkan audio langsung ke TV tanpa mengganggu playlist visual.
             </p>
@@ -373,14 +373,14 @@ export default function AnnouncerPage() {
           {activeTab === "schedules" ? (
             <button
               onClick={openAddScheduleModal}
-              className="shrink-0 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+              className="shrink-0 rounded-lg bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
             >
               + Tambah Jadwal
             </button>
           ) : (
             <button
               onClick={() => setShowBroadcastModal(true)}
-              className="shrink-0 rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+              className="shrink-0 rounded-lg bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
             >
               + Siaran Langsung
             </button>
@@ -436,7 +436,7 @@ export default function AnnouncerPage() {
                 </p>
                 <button
                   onClick={openAddScheduleModal}
-                  className="mt-4 rounded-md btn-aurora px-4 py-2 text-xs font-medium"
+                  className="mt-4 rounded-lg bg-signal text-white px-4 py-2 text-xs font-medium"
                 >
                   Buat Jadwal Pertama
                 </button>
@@ -827,7 +827,7 @@ export default function AnnouncerPage() {
             <button
               type="submit"
               disabled={schedSaving}
-              className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {schedSaving ? "Menyimpan..." : editingSchedule ? "Simpan Perubahan" : "Buat Jadwal"}
             </button>
@@ -987,7 +987,7 @@ export default function AnnouncerPage() {
             <button
               type="submit"
               disabled={broadcastUploading}
-              className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {broadcastUploading ? "Mengunggah..." : "🎤 Mulai Siaran Sekarang"}
             </button>

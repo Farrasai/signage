@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -397,7 +397,7 @@ export default function EditMediaModal({
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Menyimpan..." : "Simpan perubahan"}
           </button>

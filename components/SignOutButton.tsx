@@ -16,8 +16,9 @@ export default function SignOutButton() {
   return (
     <button
       onClick={handleSignOut}
-      className="rounded-md border border-border px-3 py-1.5 text-xs text-text-muted transition-colors hover:border-danger/40 hover:text-danger"
+      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-muted transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger"
     >
+      <span aria-hidden>→</span>
       Keluar
     </button>
   );

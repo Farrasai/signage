@@ -126,7 +126,7 @@ export default function OverviewPage() {
   return (
     <div>
       <header className="mb-7">
-        <h1 className="font-display text-2xl font-semibold">Ringkasan</h1>
+        <h1 className="text-2xl font-semibold text-text">Ringkasan</h1>
         <p className="mt-1 text-sm text-text-muted">
           {loading
             ? "Memuat status layar..."
@@ -138,14 +138,14 @@ export default function OverviewPage() {
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => {
           const card = (
-            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-signal/40">
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-signal/40">
               <span
                 className={`text-base leading-none ${s.accent ? "text-online" : "text-text-muted"}`}
               >
                 {s.icon}
               </span>
               <p
-                className={`text-3xl font-semibold tabular-nums text-lavender ${s.accent ? "text-online" : ""}`}
+                className={`text-3xl font-semibold tabular-nums ${s.accent ? "text-online" : "text-text"}`}
               >
                 {loading ? (
                   <span className="text-2xl text-text-muted">—</span>
@@ -168,11 +168,11 @@ export default function OverviewPage() {
       </div>
 
       {!loading && displays.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+        <div className="rounded-xl border border-dashed border-border p-10 text-center">
           <p className="text-text-muted">Belum ada layar terdaftar.</p>
           <Link
             href="/dashboard/displays"
-            className="mt-3 inline-block rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+            className="mt-3 inline-block rounded-lg bg-signal px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             Tambah layar pertama
           </Link>
@@ -183,11 +183,11 @@ export default function OverviewPage() {
         {displays.map((d) => (
           <div
             key={d.id}
-            className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4"
+            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
           >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-medium">{d.name}</h3>
+                <h3 className="font-medium text-text">{d.name}</h3>
                 <p className="mt-0.5 font-mono text-xs text-text-muted">{d.slug}</p>
               </div>
               <StatusDot lastSeen={d.last_seen} />
@@ -226,12 +226,12 @@ export default function OverviewPage() {
       {/* Activity Log */}
       {!loading && activities.length > 0 && (
         <section className="mt-10">
-          <h2 className="mb-4 font-display text-base font-semibold">Aktivitas Terbaru</h2>
-          <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
+          <h2 className="mb-4 text-base font-semibold text-text">Aktivitas Terbaru</h2>
+          <div className="divide-y divide-border rounded-xl border border-border bg-surface">
             {activities.map((a) => (
               <div key={a.id} className="flex items-center gap-3 px-4 py-3">
                 <span className="shrink-0 text-sm leading-none">{a.icon}</span>
-                <p className="min-w-0 flex-1 truncate text-sm">{a.label}</p>
+                <p className="min-w-0 flex-1 truncate text-sm text-text">{a.label}</p>
                 <time className="shrink-0 text-xs text-text-muted">
                   {formatDateTime(a.timestamp)}
                 </time>

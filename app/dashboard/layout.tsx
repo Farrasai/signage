@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Sidebar from "@/components/Sidebar";
 import SignOutButton from "@/components/SignOutButton";
-
 import SystemClock from "@/components/SystemClock";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default async function DashboardLayout({
   children,
@@ -20,21 +20,32 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface px-4 py-5">
-        <div className="mb-6 flex items-center gap-2.5 px-1">
-          <span className="h-2.5 w-2.5 rounded-full bg-signal shadow-[0_0_12px_var(--signal)]" />
-          <span className="font-display text-base font-semibold tracking-tight">
-            Siaran
+    <div className="flex min-h-screen bg-bg">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface px-4 py-5">
+        {/* Logo / Nama produk */}
+        <div className="mb-6 flex items-center gap-2.5 px-2">
+          <span
+            className="h-2 w-2 rounded-full bg-signal"
+            style={{ boxShadow: "0 0 8px var(--signal)" }}
+            aria-hidden
+          />
+          <span className="text-sm font-semibold tracking-tight text-text">
+            Digital Signage
           </span>
         </div>
+
+        {/* Nav */}
         <Sidebar />
-        <div className="mt-auto space-y-2 border-t border-border pt-4">
+
+        {/* Footer sidebar */}
+        <div className="mt-auto space-y-1 border-t border-border pt-4">
           <SystemClock />
-          <p className="truncate px-1 text-xs text-text-muted">{user.email}</p>
+          <ThemeToggle />
+          <p className="truncate px-2 text-xs text-text-muted">{user.email}</p>
           <SignOutButton />
         </div>
       </aside>
+
       <main className="min-w-0 flex-1 px-8 py-7">{children}</main>
     </div>
   );

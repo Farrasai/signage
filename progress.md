@@ -7,6 +7,39 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-16] Redesign UI — Migrasi ke Sistem Desain ABPEDNAS (antislop: during)
+
+- **Status:** ✅ Selesai
+- **Arah desain:** Pindah dari Auros palette (dark teal) ke sistem desain ABPEDNAS dari `DESIGN.md`. Light mode default, dark mode toggle tersedia. Inter sebagai font tunggal. Scope: semua halaman dashboard + login.
+- **File diubah / dibuat:**
+  - `app/globals.css`: Token warna dimigrasi seluruhnya ke dua skema (`:root` untuk light, `.dark` untuk dark). Kelas `.btn-aurora` diganti dengan `.btn-primary` (solid blue) dan `.btn-ghost`. Marquee animation dipertahankan.
+  - `app/layout.tsx`: Space_Grotesk dihapus (Inter saja sesuai DESIGN.md). Ditambahkan anti-flash script inline di `<head>` untuk mencegah kedip saat halaman dimuat.
+  - `app/login/page.tsx`: Redesign layout dua kolom desktop (panel branding biru kiri + form kanan). Single column di mobile. Button ganti ke solid blue. Focus ring pada input dan button. Error state dengan `role=alert`.
+  - `app/dashboard/layout.tsx`: Sidebar lebar 64, ditambahkan `ThemeToggle` di footer sidebar.
+  - `app/dashboard/page.tsx`: Token warna diperbarui, `rounded-2xl` diseragamkan ke `rounded-xl`, `text-lavender` dan `font-display` dihapus.
+  - `app/dashboard/displays/page.tsx`: `btn-aurora` diganti, `font-display` dihapus.
+  - `app/dashboard/media/page.tsx`: Semua `btn-aurora` diganti dengan solid blue.
+  - `app/dashboard/playlists/page.tsx`, `playlists/[id]/page.tsx`: Idem.
+  - `app/dashboard/schedules/page.tsx`: Idem.
+  - `app/dashboard/announcer/page.tsx`: Idem.
+  - `app/dashboard/emergency/page.tsx`: `font-display` dihapus.
+  - `app/display/page.tsx`: `btn-aurora` diganti ke `bg-white text-gray-900` (halaman pairing memiliki bg gelap sendiri).
+  - `components/Sidebar.tsx`: Warna active link menggunakan `text-signal` (biru), `focus-visible` ditambahkan di semua link.
+  - `components/SignOutButton.tsx`: Full-width, layout selaras dengan ThemeToggle, `focus-visible` ditambahkan.
+  - `components/Modal.tsx`: Hapus `backdrop-blur-sm` glassmorphism, ganti ke solid surface. Tambah Escape key listener dan `role=dialog`.
+  - `components/ThemeToggle.tsx`: Komponen baru. Toggle light/dark, simpan ke `localStorage`, terapkan class `.dark` ke `<html>`.
+  - `components/EditMediaModal.tsx`, `AgendaTable.tsx`, `EmergencyOverlay.tsx`: `btn-aurora` dan `font-display` dihapus.
+- **Antislop compliance:**
+  - R-01: Gradient aurora pada button dihapus, diganti solid blue. Glow pada status dot satu elemen dipertahankan (purpose: live status indicator).
+  - R-10: Glassmorphism `backdrop-blur-sm` di Modal dihapus.
+  - R-21: Dark mode toggle diimplementasikan penuh, kedua tema berfungsi.
+  - R-25: Semua teks menggunakan token kontras yang sesuai WCAG AA.
+  - R-26: Modal sekarang dapat ditutup dengan Escape.
+  - R-32: `focus-visible` ditambahkan ke semua interactive element baru.
+- **Build ✅ Lint ✅**
+
+---
+
 ### [2026-10-05] Master Jadwal Pengumuman Suara (Scheduled Announcements & Management)
 
 - **Status:** ✅ Selesai

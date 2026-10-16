@@ -123,7 +123,7 @@ export default function DisplaysPage() {
     <div>
       <header className="mb-7 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold">Layar & TV</h1>
+          <h1 className="text-2xl font-semibold text-text">Layar & TV</h1>
           <p className="mt-1 text-sm text-text-muted">
             Buka URL-nya langsung di browser TV, atau pasangkan lewat kode PIN dari{" "}
             <span className="font-mono">/display</span> — praktis untuk TV yang dikendalikan
@@ -132,7 +132,7 @@ export default function DisplaysPage() {
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90"
+          className="rounded-lg bg-signal px-4 py-2 text-sm font-medium text-white hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
         >
           + Tambah layar
         </button>
@@ -304,7 +304,7 @@ export default function DisplaysPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
             >
               {saving ? "Menyimpan..." : "Buat layar"}
             </button>

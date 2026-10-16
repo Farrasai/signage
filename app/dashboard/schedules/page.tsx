@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -100,7 +100,7 @@ export default function SchedulesPage() {
     <div>
       <header className="mb-7 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold">Jadwal</h1>
+          <h1 className="text-2xl font-semibold">Jadwal</h1>
           <p className="mt-1 text-sm text-text-muted">
             Ganti playlist otomatis berdasarkan hari dan jam. Jika tidak ada jadwal aktif,
             layar memakai playlist default-nya.
@@ -109,7 +109,7 @@ export default function SchedulesPage() {
         <button
           onClick={() => setShowAdd(true)}
           disabled={!canCreate}
-          className="rounded-md btn-aurora px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-40"
+          className="rounded-lg bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-40"
         >
           + Buat jadwal
         </button>
@@ -245,7 +245,7 @@ export default function SchedulesPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-md btn-aurora px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Buat jadwal"}
             </button>

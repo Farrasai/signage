@@ -1,4 +1,4 @@
-import type { TableContent } from "@/lib/types";
+﻿import type { TableContent } from "@/lib/types";
 
 /** Ukuran font & padding otomatis menyesuaikan jumlah baris agar tetap terbaca dari jarak jauh. */
 function sizingFor(rowCount: number) {
@@ -14,7 +14,7 @@ export default function AgendaTable({ title, columns, rows }: TableContent) {
   return (
     <div className="flex h-full w-full flex-col bg-[#0a0c10] px-8 py-8 sm:px-16 sm:py-12">
       {title && (
-        <h1 className="mb-6 shrink-0 font-display text-3xl font-semibold text-white sm:text-5xl">
+        <h1 className="mb-6 shrink-0 text-3xl font-semibold text-white sm:text-5xl">
           {title}
         </h1>
       )}

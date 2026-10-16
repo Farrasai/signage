@@ -96,7 +96,7 @@ export default function DisplayPairingPage() {
         <button
           type="submit"
           disabled={submitting || code.length < 4}
-          className="mt-4 w-full rounded-md btn-aurora px-4 py-3.5 text-base font-semibold hover:opacity-90 disabled:opacity-40"
+          className="mt-4 w-full rounded-lg bg-white px-4 py-3.5 text-base font-semibold text-gray-900 hover:opacity-90 disabled:opacity-40"
         >
           {submitting ? "Memeriksa..." : "Pasang Layar"}
         </button>
