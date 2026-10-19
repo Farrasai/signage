@@ -1,33 +1,36 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
-/* ── Token light (default) ── */
+/* ── Token light (spec: slate-50 / white) ── */
 :root {
-  --bg: #f9fafb;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #f3f4f6;
-  --border: #e5e7eb;
-  --text: #111827;
-  --text-muted: #6b7280;
-  --signal: #2563eb;
-  --signal-soft: rgba(37, 99, 235, 0.08);
-  --online: #16a34a;
-  --offline: #9ca3af;
-  --danger: #ef4444;
+  --surface-2: #f1f5f9;
+  --border: rgba(226, 232, 240, 0.8);
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --signal: #059669;
+  --signal-soft: rgba(5, 150, 105, 0.08);
+  --signal-strong: #047857;
+  --online: #059669;
+  --offline: #94a3b8;
+  --danger: #e11d48;
 }
 
 /* ── Token dark ── */
 .dark {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --surface-2: #0f172a;
-  --border: rgba(255, 255, 255, 0.08);
+  --bg: #020617;
+  --surface: #0f172a;
+  --surface-2: #020617;
+  --border: #1e293b;
   --text: #f1f5f9;
   --text-muted: #94a3b8;
-  --signal: #3b82f6;
-  --signal-soft: rgba(59, 130, 246, 0.12);
-  --online: #22c55e;
-  --offline: #64748b;
-  --danger: #f87171;
+  --signal: #10b981;
+  --signal-soft: rgba(16, 185, 129, 0.12);
+  --signal-strong: #059669;
+  --online: #10b981;
+  --offline: #475569;
+  --danger: #f43f5e;
 }
 
 @theme inline {
@@ -39,16 +42,20 @@
   --color-text-muted: var(--text-muted);
   --color-signal: var(--signal);
   --color-signal-soft: var(--signal-soft);
+  --color-signal-strong: var(--signal-strong);
   --color-online: var(--online);
   --color-offline: var(--offline);
   --color-danger: var(--danger);
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-inter);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
-html,
+html {
+  min-height: 100%;
+}
 body {
-  height: 100%;
+  min-height: 100vh;
 }
 
 body {
@@ -65,14 +72,75 @@ body {
   color: #ffffff;
 }
 
-/* ── Primary button ── */
-.btn-primary {
-  background: var(--signal);
-  color: #ffffff;
+/* Pattern Utama: Liquid Emerald & Neon Lime Wave */
+.emerald-wave-pattern {
+    background-color: #022c22;
+    background-image: 
+        radial-gradient(120% 80% at 85% 15%, rgba(163, 230, 53, 0.45) 0%, rgba(16, 185, 129, 0.2) 40%, transparent 70%),
+        radial-gradient(100% 90% at 15% 85%, rgba(52, 211, 153, 0.35) 0%, rgba(5, 150, 105, 0.25) 50%, transparent 80%),
+        linear-gradient(135deg, #022c22 0%, #064e3b 35%, #047857 68%, #065f46 100%);
+    position: relative;
+    overflow: hidden;
 }
 
-.btn-primary:hover {
-  opacity: 0.88;
+.emerald-wave-pattern::before {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(ellipse at center, rgba(217, 249, 157, 0.28) 0%, rgba(16, 185, 129, 0.1) 35%, transparent 65%);
+    transform: rotate(-18deg) scaleY(0.45);
+    pointer-events: none;
+    filter: blur(8px);
+}
+
+.emerald-wave-pattern::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 800 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-100,260 C220,330 420,70 900,150' fill='none' stroke='rgba(217, 249, 157, 0.4)' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M-100,295 C260,360 460,110 900,190' fill='none' stroke='rgba(52, 211, 153, 0.25)' stroke-width='12' stroke-linecap='round'/%3E%3Cpath d='M120,420 C380,220 550,280 880,60' fill='none' stroke='rgba(236, 252, 203, 0.22)' stroke-width='2'/%3E%3C/svg%3E");
+    background-size: cover;
+    background-position: center;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+/* Pattern Header Kartu TV saat Offline */
+.emerald-wave-offline {
+    background-color: #091917;
+    background-image: 
+        radial-gradient(90% 70% at 85% 15%, rgba(16, 185, 129, 0.15) 0%, transparent 65%),
+        linear-gradient(135deg, #091514 0%, #0f2925 50%, #11302b 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.emerald-wave-offline::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 800 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-100,260 C220,330 420,70 900,150' fill='none' stroke='rgba(52, 211, 153, 0.12)' stroke-width='3'/%3E%3C/svg%3E");
+    background-size: cover;
+    background-position: center;
+    pointer-events: none;
+}
+
+/* Ambient Background Glow pada Body */
+.ambient-bg {
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 45%),
+        radial-gradient(at 100% 20%, rgba(132, 204, 22, 0.06) 0px, transparent 40%);
+}
+
+/* Compat: old .btn-primary / .bg-signal-pattern alias to new wave */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  color: #ffffff;
+}
+.btn-primary.emerald-wave-pattern,
+button.bg-signal,
+a.bg-signal {
+  /* keep wave; no !important override needed — pages now use emerald-wave-pattern directly */
 }
 
 /* ── Ghost/outline button ── */
@@ -107,3 +175,4 @@ body {
     animation-duration: 1ms;
   }
 }
+

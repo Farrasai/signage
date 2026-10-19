@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Media, Playlist, PlaylistItem } from "@/lib/types";
+import type { Media, Playlist, PlaylistItem, Profile } from "@/lib/types";
+import { canEditOwner } from "@/lib/auth";
 import Modal from "@/components/Modal";
 
 export default function PlaylistEditorPage() {
@@ -18,6 +19,7 @@ export default function PlaylistEditorPage() {
   const [loading, setLoading] = useState(true);
   const [showPicker, setShowPicker] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -54,6 +56,7 @@ export default function PlaylistEditorPage() {
   }
 
   async function addMedia(mediaId: string) {
+    if (playlist && !canEditOwner(profile, playlist.owner_id)) return;
     const supabase = createClient();
     await supabase.from("playlist_items").insert({
       playlist_id: playlistId,
@@ -65,12 +68,14 @@ export default function PlaylistEditorPage() {
   }
 
   async function removeItem(itemId: string) {
+    if (playlist && !canEditOwner(profile, playlist.owner_id)) return;
     const supabase = createClient();
     await supabase.from("playlist_items").delete().eq("id", itemId);
     load();
   }
 
   async function move(index: number, direction: -1 | 1) {
+    if (playlist && !canEditOwner(profile, playlist.owner_id)) return;
     const target = index + direction;
     if (target < 0 || target >= items.length) return;
     const reordered = [...items];
@@ -93,13 +98,13 @@ export default function PlaylistEditorPage() {
     );
   }
 
-  if (loading) return <p className="text-sm text-text-muted">Memuat playlist...</p>;
+  if (loading) return <p className="text-sm text-slate-500 dark:text-slate-400">Memuat playlist...</p>;
 
   if (notFound) {
     return (
       <div>
-        <p className="text-text-muted">Playlist tidak ditemukan.</p>
-        <button onClick={() => router.push("/dashboard/playlists")} className="mt-3 text-signal">
+        <p className="text-slate-500 dark:text-slate-400">Playlist tidak ditemukan.</p>
+        <button onClick={() => router.push("/dashboard/playlists")} className="mt-3 text-emerald-600">
           ← Kembali ke daftar playlist
         </button>
       </div>
@@ -111,7 +116,7 @@ export default function PlaylistEditorPage() {
 
   return (
     <div>
-      <Link href="/dashboard/playlists" className="text-xs text-text-muted hover:text-text">
+      <Link href="/dashboard/playlists" className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white">
         ← Semua playlist
       </Link>
 
@@ -119,18 +124,18 @@ export default function PlaylistEditorPage() {
         <input
           defaultValue={playlist?.name}
           onBlur={(e) => renamePlaylist(e.target.value)}
-          className="w-full max-w-md bg-transparent text-2xl font-semibold text-text outline-none focus:text-signal"
+          className="w-full max-w-md bg-transparent text-2xl font-semibold text-slate-900 dark:text-white outline-none focus:text-emerald-600"
         />
         <button
           onClick={() => setShowPicker(true)}
-          className="shrink-0 rounded-lg bg-signal px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Tambah konten
         </button>
       </header>
 
       {items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-text-muted">
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
           Playlist masih kosong. Tambahkan foto, video, atau YouTube dari perpustakaan konten.
         </div>
       )}
@@ -139,13 +144,13 @@ export default function PlaylistEditorPage() {
         {items.map((item, index) => (
           <div
             key={item.id}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
+            className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3"
           >
-            <span className="w-6 text-center text-sm text-text-muted">{index + 1}</span>
+            <span className="w-6 text-center text-sm text-slate-500 dark:text-slate-400">{index + 1}</span>
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{item.media?.name}</p>
-                <p className="text-xs text-text-muted">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {item.media?.type === "youtube_video" && "YouTube video"}
                   {item.media?.type === "youtube_playlist" && "YouTube playlist"}
                   {item.media?.type === "video" && "Video"}
@@ -154,7 +159,7 @@ export default function PlaylistEditorPage() {
                 </p>
               </div>
             </div>
-            <label className="flex shrink-0 items-center gap-1.5 text-xs text-text-muted">
+            <label className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
               Durasi
               <input
                 type="number"
@@ -165,7 +170,7 @@ export default function PlaylistEditorPage() {
                   const raw = e.target.value;
                   setOverride(item.id, raw === "" ? null : parseInt(raw, 10));
                 }}
-                className="w-16 rounded-md border border-border bg-surface-2 px-1.5 py-1 text-center outline-none focus:border-signal"
+                className="w-16 rounded-xl border border-slate-200 bg-slate-50 px-1.5 py-1 text-center font-mono font-bold outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800"
               />
               detik
             </label>
@@ -173,20 +178,20 @@ export default function PlaylistEditorPage() {
               <button
                 onClick={() => move(index, -1)}
                 disabled={index === 0}
-                className="rounded-md border border-border px-2 py-1 text-xs text-text-muted hover:text-text disabled:opacity-30"
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
                 ↑
               </button>
               <button
                 onClick={() => move(index, 1)}
                 disabled={index === items.length - 1}
-                className="rounded-md border border-border px-2 py-1 text-xs text-text-muted hover:text-text disabled:opacity-30"
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
                 ↓
               </button>
               <button
                 onClick={() => removeItem(item.id)}
-                className="rounded-md border border-border px-2 py-1 text-xs text-text-muted hover:border-danger/50 hover:text-danger"
+                className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
               >
                 Hapus
               </button>
@@ -198,7 +203,7 @@ export default function PlaylistEditorPage() {
       {showPicker && (
         <Modal title="Pilih konten" onClose={() => setShowPicker(false)} width="max-w-lg">
           {available.length === 0 ? (
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Semua konten di perpustakaan sudah ada di playlist ini. Tambah konten baru dari
               halaman Konten.
             </p>
@@ -208,10 +213,10 @@ export default function PlaylistEditorPage() {
                 <button
                   key={m.id}
                   onClick={() => addMedia(m.id)}
-                  className="flex w-full items-center justify-between rounded-md border border-border px-3.5 py-2.5 text-left text-sm hover:border-signal/50"
+                  className="flex w-full items-center justify-between rounded-md border border-slate-200 dark:border-slate-800 px-3.5 py-2.5 text-left text-sm hover:border-emerald-500/50"
                 >
                   <span className="truncate">{m.name}</span>
-                  <span className="shrink-0 text-xs text-text-muted">{m.duration}s</span>
+                  <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{m.duration}s</span>
                 </button>
               ))}
             </div>

@@ -24,7 +24,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-muted transition-colors hover:bg-surface-2 hover:text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
+      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
       aria-label={dark ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
       title={dark ? "Mode terang" : "Mode gelap"}
     >

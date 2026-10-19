@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Media, MediaType } from "@/lib/types";
+import type { Media, MediaType, Profile } from "@/lib/types";
+import { canEditOwner } from "@/lib/auth";
 import {
   DEFAULT_AGENDA_COLUMNS,
   guessMediaTypeFromUrl,
@@ -12,6 +13,8 @@ import {
   parseYouTubeUrl,
 } from "@/lib/utils";
 import Modal from "@/components/Modal";
+import Pagination from "@/components/Pagination";
+import { useMemo } from "react";
 import EditMediaModal from "@/components/EditMediaModal";
 
 function readVideoDuration(file: File): Promise<number> {
@@ -36,11 +39,11 @@ const TYPE_LABEL: Record<MediaType, string> = {
 };
 
 const TYPE_BADGE: Record<MediaType, string> = {
-  image: "bg-signal/15 text-liquid-mist",
-  video: "bg-purple-500/15 text-purple-300",
-  youtube_video: "bg-red-500/15 text-red-400",
-  youtube_playlist: "bg-red-500/15 text-red-400",
-  table: "bg-amber-500/15 text-amber-400",
+  image: "bg-emerald-600/90 text-white",
+  video: "bg-purple-500/90 text-white",
+  youtube_video: "bg-rose-500/90 text-white",
+  youtube_playlist: "bg-rose-500/90 text-white",
+  table: "bg-amber-500/90 text-white",
 };
 
 type FilterType = "semua" | MediaType;
@@ -56,6 +59,8 @@ function formatDate(iso: string) {
 
 export default function MediaPage() {
   const [items, setItems] = useState<Media[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [tab, setTab] = useState<"upload" | "youtube" | "cdn" | "table">("upload");
@@ -68,6 +73,7 @@ export default function MediaPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("semua");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [page, setPage] = useState(1);
 
   const [ytUrl, setYtUrl] = useState("");
   const [ytName, setYtName] = useState("");
@@ -110,6 +116,11 @@ export default function MediaPage() {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
+  const PAGE_SIZE = 24;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((Math.min(page, totalPages) - 1) * PAGE_SIZE, Math.min(page, totalPages) * PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [search, filter]);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
   // counts per type for pill badges
   const counts = {
@@ -325,7 +336,7 @@ export default function MediaPage() {
   // duration input inline (shared by grid and list)
   function DurationInput({ m }: { m: Media }) {
     return (
-      <label className="flex items-center gap-1.5 text-xs text-text-muted">
+      <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
         <input
           type="number"
           min={1}
@@ -334,7 +345,7 @@ export default function MediaPage() {
             const val = parseInt(e.target.value, 10);
             if (val > 0 && val !== m.duration) updateDuration(m.id, val);
           }}
-          className="w-14 rounded-md border border-border bg-surface-2 px-1.5 py-1 text-center outline-none focus:border-signal"
+          className="w-16 rounded-xl border border-slate-200 bg-slate-50 px-1.5 py-1 text-center font-mono font-extrabold outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800"
           aria-label={`Durasi ${m.name}`}
         />
         <span>dtk</span>
@@ -353,14 +364,14 @@ export default function MediaPage() {
     }
     if (m.type === "table") {
       return (
-        <div className={`flex flex-col items-center justify-center gap-0.5 bg-surface-2 text-text-muted ${className ?? ""}`}>
+        <div className={`flex flex-col items-center justify-center gap-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ${className ?? ""}`}>
           <span className="text-xl">▦</span>
           <span className="text-[9px]">{m.content?.columns.length ?? 0}k · {m.content?.rows.length ?? 0}b</span>
         </div>
       );
     }
     return (
-      <div className={`flex items-center justify-center bg-surface-2 text-red-400 ${className ?? ""}`}>
+      <div className={`flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-red-400 ${className ?? ""}`}>
         <span className="text-xl">▶</span>
       </div>
     );
@@ -368,26 +379,13 @@ export default function MediaPage() {
 
   return (
     <div>
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-text">Konten</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Foto/video dari Supabase Storage, YouTube, link CDN, atau tabel agenda.
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="shrink-0 rounded-md bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
-        >
-          + Tambah konten
-        </button>
-      </header>
+      <div className="mb-5 flex justify-end"><button onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95">+ Tambah konten</button></div>
 
       {/* Toolbar: Search + Filter Pills + View Toggle */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
         {/* Search */}
         <div className="relative min-w-0 flex-1">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-text-muted text-sm">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500 dark:text-slate-400 text-sm">
             ⌕
           </span>
           <input
@@ -395,7 +393,7 @@ export default function MediaPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama konten..."
-            className="w-full rounded-md border border-border bg-surface-2 py-2 pl-8 pr-3 text-sm outline-none focus:border-signal"
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 py-2.5 pl-8 pr-3 text-sm outline-none focus:border-emerald-500"
             aria-label="Cari konten"
           />
         </div>
@@ -408,14 +406,14 @@ export default function MediaPage() {
               onClick={() => setFilter(pill.key)}
               className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 filter === pill.key
-                  ? "bg-signal text-white"
-                  : "border border-border text-text-muted hover:border-signal/40 hover:text-text"
+                  ? "bg-emerald-600 text-white"
+                  : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:border-emerald-500/40 hover:text-slate-900 dark:text-white"
               }`}
             >
               {pill.label}
               <span
                 className={`rounded px-1 py-0.5 text-[10px] tabular-nums ${
-                  filter === pill.key ? "bg-white/20" : "bg-surface text-text-muted"
+                  filter === pill.key ? "bg-white/20" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400"
                 }`}
               >
                 {pill.count}
@@ -425,13 +423,13 @@ export default function MediaPage() {
         </div>
 
         {/* View toggle */}
-        <div className="flex rounded-md border border-border bg-surface-2 p-0.5">
+        <div className="flex rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 p-0.5">
           <button
             onClick={() => setViewMode("grid")}
             aria-label="Tampilan grid"
             title="Tampilan Grid"
-            className={`rounded px-2.5 py-1.5 text-sm transition-colors ${
-              viewMode === "grid" ? "bg-surface text-text" : "text-text-muted hover:text-text"
+            className={`rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+              viewMode === "grid" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"
             }`}
           >
             ⊞
@@ -440,8 +438,8 @@ export default function MediaPage() {
             onClick={() => setViewMode("list")}
             aria-label="Tampilan list"
             title="Tampilan List"
-            className={`rounded px-2.5 py-1.5 text-sm transition-colors ${
-              viewMode === "list" ? "bg-surface text-text" : "text-text-muted hover:text-text"
+            className={`rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+              viewMode === "list" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"
             }`}
           >
             ☰
@@ -453,21 +451,21 @@ export default function MediaPage() {
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-surface" />
+            <div key={i} className="h-24 animate-pulse rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
           ))}
         </div>
       )}
 
       {/* Empty state: no media in DB at all */}
       {!loading && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-          <p className="text-sm font-medium text-text">Perpustakaan konten kosong</p>
-          <p className="mt-1 text-sm text-text-muted">
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center">
+          <p className="text-sm font-medium text-slate-900 dark:text-white">Perpustakaan konten kosong</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Unggah foto/video, tambahkan link YouTube, atau buat tabel agenda.
           </p>
           <button
             onClick={() => setShowAdd(true)}
-            className="mt-4 rounded-md bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
+            className="mt-4 rounded-md bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:opacity-90"
           >
             + Tambah konten pertama
           </button>
@@ -476,13 +474,13 @@ export default function MediaPage() {
 
       {/* Empty state: filter/search no results */}
       {!loading && items.length > 0 && filtered.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-          <p className="text-sm text-text-muted">
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Tidak ada konten yang sesuai dengan filter atau kata kunci.
           </p>
           <button
             onClick={() => { setSearch(""); setFilter("semua"); }}
-            className="mt-3 text-xs text-signal hover:underline"
+            className="mt-3 text-xs text-emerald-600 hover:underline"
           >
             Reset filter
           </button>
@@ -491,10 +489,10 @@ export default function MediaPage() {
 
       {/* Grid view */}
       {!loading && filtered.length > 0 && viewMode === "grid" && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((m) => (
-            <div key={m.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
-              <div className="relative flex h-32 items-center justify-center overflow-hidden bg-surface-2">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {paginated.map((m) => (
+            <div key={m.id} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="relative flex h-44 items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800">
                 <Thumb m={m} className="h-full w-full" />
                 <span className={`absolute left-2 top-2 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[m.type]}`}>
                   {TYPE_LABEL[m.type]}
@@ -507,13 +505,13 @@ export default function MediaPage() {
                   <div className="flex items-center gap-2.5">
                     <button
                       onClick={() => setEditingItem(m)}
-                      className="text-xs text-text-muted hover:text-signal"
+                      className="cursor-pointer rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => setConfirmDelete(m)}
-                      className="text-xs text-text-muted hover:text-danger"
+                      className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
                     >
                       Hapus
                     </button>
@@ -527,23 +525,23 @@ export default function MediaPage() {
 
       {/* List view */}
       {!loading && filtered.length > 0 && viewMode === "list" && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted">
+              <tr className="border-b border-slate-200 dark:border-slate-800">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Konten
                 </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted sm:table-cell">
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400 sm:table-cell">
                   Tipe
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Durasi
                 </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-text-muted md:table-cell">
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400 md:table-cell">
                   Ditambahkan
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-text-muted">
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Aksi
                 </th>
               </tr>
@@ -552,8 +550,8 @@ export default function MediaPage() {
               {filtered.map((m, idx) => (
                 <tr
                   key={m.id}
-                  className={`border-b border-border last:border-0 hover:bg-surface-2 transition-colors ${
-                    idx % 2 === 1 ? "bg-surface-2/30" : ""
+                  className={`border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-slate-100 dark:bg-slate-800 transition-colors ${
+                    idx % 2 === 1 ? "bg-slate-100 dark:bg-slate-800/30" : ""
                   }`}
                 >
                   {/* Nama + thumbnail */}
@@ -576,7 +574,7 @@ export default function MediaPage() {
                     <DurationInput m={m} />
                   </td>
                   {/* Tanggal */}
-                  <td className="hidden px-4 py-3 text-xs text-text-muted md:table-cell">
+                  <td className="hidden px-4 py-3 text-xs text-slate-500 dark:text-slate-400 md:table-cell">
                     {m.created_at ? formatDate(m.created_at) : "-"}
                   </td>
                   {/* Aksi */}
@@ -584,13 +582,13 @@ export default function MediaPage() {
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => setEditingItem(m)}
-                        className="text-xs text-text-muted hover:text-signal"
+                        className="cursor-pointer rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => setConfirmDelete(m)}
-                        className="text-xs text-text-muted hover:text-danger"
+                        className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
                       >
                         Hapus
                       </button>
@@ -610,11 +608,11 @@ export default function MediaPage() {
           onClose={() => setShowAdd(false)}
           width={tab === "table" ? "max-w-2xl" : "max-w-md"}
         >
-          <div className="mb-4 flex flex-wrap gap-1 rounded-lg bg-surface-2 p-1">
+          <div className="mb-4 flex flex-wrap gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1">
             <button
               onClick={() => setTab("upload")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
-                tab === "upload" ? "bg-surface text-text" : "text-text-muted"
+                tab === "upload" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               Unggah file
@@ -622,7 +620,7 @@ export default function MediaPage() {
             <button
               onClick={() => setTab("youtube")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
-                tab === "youtube" ? "bg-surface text-text" : "text-text-muted"
+                tab === "youtube" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               YouTube
@@ -630,7 +628,7 @@ export default function MediaPage() {
             <button
               onClick={() => setTab("cdn")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
-                tab === "cdn" ? "bg-surface text-text" : "text-text-muted"
+                tab === "cdn" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               Link CDN
@@ -638,7 +636,7 @@ export default function MediaPage() {
             <button
               onClick={() => setTab("table")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
-                tab === "table" ? "bg-surface text-text" : "text-text-muted"
+                tab === "table" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               Tabel
@@ -647,7 +645,7 @@ export default function MediaPage() {
 
           {tab === "upload" ? (
             <div>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border py-10 text-sm text-text-muted hover:border-signal/50">
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 py-10 text-sm text-slate-500 dark:text-slate-400 hover:border-emerald-500/50">
                 <span>Klik untuk pilih foto atau video</span>
                 <span className="text-xs">JPG, PNG, MP4 — bisa pilih banyak file</span>
                 <input
@@ -661,33 +659,33 @@ export default function MediaPage() {
                 />
               </label>
               {uploading && (
-                <p className="mt-3 text-center text-xs text-text-muted">{progressLabel}</p>
+                <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">{progressLabel}</p>
               )}
             </div>
           ) : tab === "youtube" ? (
             <form onSubmit={handleAddYoutube} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                   Link video atau playlist YouTube
                 </label>
                 <input
                   value={ytUrl}
                   onChange={(e) => setYtUrl(e.target.value)}
                   placeholder="https://youtube.com/watch?v=... atau /playlist?list=..."
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Nama (opsional)</label>
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Nama (opsional)</label>
                 <input
                   value={ytName}
                   onChange={(e) => setYtName(e.target.value)}
                   placeholder="Contoh: Playlist musik kantor"
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                   Durasi ditampilkan sebelum lanjut ke konten berikutnya (detik)
                 </label>
                 <input
@@ -695,14 +693,14 @@ export default function MediaPage() {
                   min={5}
                   value={ytDuration}
                   onChange={(e) => setYtDuration(parseInt(e.target.value, 10) || 30)}
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
-              {ytError && <p className="text-sm text-danger">{ytError}</p>}
+              {ytError && <p className="text-sm text-rose-600 dark:text-rose-400">{ytError}</p>}
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-md bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Tambahkan"}
               </button>
@@ -710,7 +708,7 @@ export default function MediaPage() {
           ) : tab === "cdn" ? (
             <form onSubmit={handleAddCdnLink} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                   Link langsung ke file (Cloudinary, Bunny, S3, dll.)
                 </label>
                 <input
@@ -718,22 +716,22 @@ export default function MediaPage() {
                   onChange={(e) => setCdnUrl(e.target.value)}
                   onBlur={handleCdnUrlBlur}
                   placeholder="https://res.cloudinary.com/.../video/upload/promo.mp4"
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
-                <p className="mt-1.5 text-xs text-text-muted">
+                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                   Tempel URL yang langsung mengarah ke file foto/video (bukan halaman
                   embed/player). Di Cloudinary, gunakan tombol &ldquo;Copy URL&rdquo; pada
                   asset-nya.
                 </p>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Jenis konten</label>
-                <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Jenis konten</label>
+                <div className="flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1">
                   <button
                     type="button"
                     onClick={() => setCdnType("image")}
                     className={`flex-1 rounded-md py-1.5 text-sm ${
-                      cdnType === "image" ? "bg-surface text-text" : "text-text-muted"
+                      cdnType === "image" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
                     }`}
                   >
                     Foto
@@ -742,7 +740,7 @@ export default function MediaPage() {
                     type="button"
                     onClick={() => setCdnType("video")}
                     className={`flex-1 rounded-md py-1.5 text-sm ${
-                      cdnType === "video" ? "bg-surface text-text" : "text-text-muted"
+                      cdnType === "video" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
                     }`}
                   >
                     Video
@@ -750,16 +748,16 @@ export default function MediaPage() {
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Nama (opsional)</label>
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Nama (opsional)</label>
                 <input
                   value={cdnName}
                   onChange={(e) => setCdnName(e.target.value)}
                   placeholder="Contoh: Banner Promo September"
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                   Durasi ditampilkan (detik)
                   {cdnType === "video" && " — video akan lanjut otomatis setelah selesai diputar"}
                 </label>
@@ -768,14 +766,14 @@ export default function MediaPage() {
                   min={1}
                   value={cdnDuration}
                   onChange={(e) => setCdnDuration(parseInt(e.target.value, 10) || 10)}
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
-              {cdnError && <p className="text-sm text-danger">{cdnError}</p>}
+              {cdnError && <p className="text-sm text-rose-600 dark:text-rose-400">{cdnError}</p>}
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-md bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Tambahkan"}
               </button>
@@ -783,29 +781,29 @@ export default function MediaPage() {
           ) : (
             <form onSubmit={handleAddTable} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Judul tabel</label>
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Judul tabel</label>
                 <input
                   value={tableTitle}
                   onChange={(e) => setTableTitle(e.target.value)}
                   placeholder="Contoh: Agenda Kegiatan"
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Kolom</label>
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Kolom</label>
                 <div className="flex flex-wrap gap-2">
                   {tableColumns.map((col, i) => (
                     <div key={i} className="flex items-center gap-1">
                       <input
                         value={col}
                         onChange={(e) => updateColumn(i, e.target.value)}
-                        className="w-36 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-sm outline-none focus:border-signal"
+                        className="w-36 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-sm outline-none focus:border-emerald-500"
                       />
                       <button
                         type="button"
                         onClick={() => removeColumn(i)}
-                        className="text-text-muted hover:text-danger"
+                        className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:text-rose-400"
                         title="Hapus kolom"
                       >
                         ✕
@@ -815,7 +813,7 @@ export default function MediaPage() {
                   <button
                     type="button"
                     onClick={addColumn}
-                    className="rounded-md border border-dashed border-border px-3 py-1.5 text-sm text-text-muted hover:border-signal/50"
+                    className="rounded-md border border-dashed border-slate-200 dark:border-slate-800 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:border-emerald-500/50"
                   >
                     + Kolom
                   </button>
@@ -823,7 +821,7 @@ export default function MediaPage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                   Tempel data (pisahkan kolom dengan tab dari Excel, atau koma — satu baris per data)
                 </label>
                 <textarea
@@ -834,20 +832,20 @@ export default function MediaPage() {
                     "1\tRapat Koordinasi\tSenin, 10:00 - Ruang A\tWajib hadir\n" +
                     "2\tPelatihan Staf\tSelasa, 13:00 - Aula\t-"
                   }
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 font-mono text-xs outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 font-mono text-xs outline-none focus:border-emerald-500"
                 />
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={handleParsePaste}
-                    className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-signal/50"
+                    className="rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs hover:border-emerald-500/50"
                   >
                     Proses tempelan &rarr; tambahkan ke tabel
                   </button>
                   <button
                     type="button"
                     onClick={addEmptyRow}
-                    className="rounded-md border border-dashed border-border px-3 py-1.5 text-xs text-text-muted hover:border-signal/50"
+                    className="rounded-md border border-dashed border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:border-emerald-500/50"
                   >
                     + Baris kosong
                   </button>
@@ -855,38 +853,38 @@ export default function MediaPage() {
               </div>
 
               {tableRows.length > 0 && (
-                <div className="max-h-64 overflow-auto rounded-lg border border-border">
+                <div className="max-h-64 overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
                   <table className="w-full border-collapse text-xs">
                     <thead>
                       <tr>
                         {tableColumns.map((col, i) => (
                           <th
                             key={i}
-                            className="sticky top-0 border-b border-border bg-surface-2 px-2 py-1.5 text-left text-text-muted"
+                            className="sticky top-0 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 text-left text-slate-500 dark:text-slate-400"
                           >
                             {col}
                           </th>
                         ))}
-                        <th className="sticky top-0 border-b border-border bg-surface-2 px-2 py-1.5" />
+                        <th className="sticky top-0 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-2 py-1.5" />
                       </tr>
                     </thead>
                     <tbody>
                       {tableRows.map((row, ri) => (
                         <tr key={ri}>
                           {tableColumns.map((_, ci) => (
-                            <td key={ci} className="border-b border-border px-1 py-1">
+                            <td key={ci} className="border-b border-slate-200 dark:border-slate-800 px-1 py-1">
                               <input
                                 value={row[ci] ?? ""}
                                 onChange={(e) => updateCell(ri, ci, e.target.value)}
-                                className="w-full rounded bg-transparent px-1.5 py-1 outline-none focus:bg-surface"
+                                className="w-full rounded bg-transparent px-1.5 py-1 outline-none focus:bg-white dark:bg-slate-900"
                               />
                             </td>
                           ))}
-                          <td className="border-b border-border px-1 py-1 text-center">
+                          <td className="border-b border-slate-200 dark:border-slate-800 px-1 py-1 text-center">
                             <button
                               type="button"
                               onClick={() => removeRow(ri)}
-                              className="text-text-muted hover:text-danger"
+                              className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:text-rose-400"
                             >
                               ✕
                             </button>
@@ -899,7 +897,7 @@ export default function MediaPage() {
               )}
 
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                   Durasi ditampilkan (detik)
                 </label>
                 <input
@@ -907,15 +905,15 @@ export default function MediaPage() {
                   min={5}
                   value={tableDuration}
                   onChange={(e) => setTableDuration(parseInt(e.target.value, 10) || 25)}
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
 
-              {tableError && <p className="text-sm text-danger">{tableError}</p>}
+              {tableError && <p className="text-sm text-rose-600 dark:text-rose-400">{tableError}</p>}
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full rounded-md bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                className="w-full rounded-md bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {uploading ? "Menyimpan..." : "Simpan tabel"}
               </button>
@@ -937,20 +935,20 @@ export default function MediaPage() {
 
       {confirmDelete && (
         <Modal title="Hapus konten?" onClose={() => setConfirmDelete(null)}>
-          <p className="text-sm text-text-muted">
-            <span className="text-text">{confirmDelete.name}</span> akan dihapus dari semua
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            <span className="text-slate-900 dark:text-white">{confirmDelete.name}</span> akan dihapus dari semua
             playlist yang memakainya.
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <button
               onClick={() => setConfirmDelete(null)}
-              className="rounded-md border border-border px-4 py-2 text-sm text-text-muted hover:text-text"
+              className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"
             >
               Batal
             </button>
             <button
               onClick={() => deleteMedia(confirmDelete)}
-              className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Hapus
             </button>

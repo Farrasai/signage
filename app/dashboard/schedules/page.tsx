@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Display, DayOfWeek, Playlist, Schedule } from "@/lib/types";
+import type { Display, DayOfWeek, Playlist, Schedule, Profile } from "@/lib/types";
+import { canEditOwner, isAdmin } from "@/lib/auth";
 import { DAYS } from "@/lib/types";
 import Modal from "@/components/Modal";
+import Pagination from "@/components/Pagination";
 
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -14,6 +16,9 @@ export default function SchedulesPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Schedule | null>(null);
+  const [page, setPage] = useState(1);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [userId, setUserId] = useState<string|null>(null);
 
   const [form, setForm] = useState({
     display_id: "",
@@ -48,6 +53,7 @@ export default function SchedulesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+  useEffect(()=>{ const tp=Math.max(1, Math.ceil(schedules.length/10)); if(page>tp) setPage(tp); }, [schedules.length, page]);
 
   function toggleDay(day: DayOfWeek) {
     setForm((f) => {
@@ -77,6 +83,7 @@ export default function SchedulesPage() {
   }
 
   async function deleteSchedule(id: string) {
+    // guard checked in UI disabled prop, but also early return
     const supabase = createClient();
     await supabase.from("schedules").delete().eq("id", id);
     setConfirmDelete(null);
@@ -98,69 +105,56 @@ export default function SchedulesPage() {
 
   return (
     <div>
-      <header className="mb-7 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Jadwal</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Ganti playlist otomatis berdasarkan hari dan jam. Jika tidak ada jadwal aktif,
-            layar memakai playlist default-nya.
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          disabled={!canCreate}
-          className="rounded-lg bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-40"
-        >
-          + Buat jadwal
-        </button>
-      </header>
+      <div className="mb-5 flex justify-end"><button onClick={() => setShowAdd(true)} disabled={!canCreate} className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-40">+ Buat jadwal</button></div>
 
       {!canCreate && !loading && (
-        <p className="mb-4 text-sm text-text-muted">
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
           Tambahkan setidaknya satu layar dan satu playlist sebelum membuat jadwal.
         </p>
       )}
 
       {!loading && schedules.length === 0 && canCreate && (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-text-muted">
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
           Belum ada jadwal. Semua layar memakai playlist default-nya.
         </div>
       )}
 
-      <div className="space-y-2.5">
-        {schedules.map((s) => (
+      {(() => { const _ps=10; const _tp=Math.max(1,Math.ceil(schedules.length/_ps)); const paginated=schedules.slice((Math.min(page,_tp)-1)*_ps, Math.min(page,_tp)*_ps); return (<><div className="space-y-2.5 min-w-0">
+        {paginated.map((s) => (
           <div
             key={s.id}
-            className="flex items-center justify-between rounded-2xl border border-border bg-surface p-4"
+            className="flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
           >
             <div>
-              <p className="font-medium">
-                {displayName(s.display_id)} → {playlistName(s.playlist_id)}
+              <p className="font-bold text-slate-900 dark:text-white">
+                {displayName(s.display_id)} <span className="mx-1 text-slate-400">→</span> <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{playlistName(s.playlist_id)}</span>
               </p>
-              <p className="mt-0.5 text-xs text-text-muted">
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 {dayLabels(s.days_of_week)} · {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
                 {s.priority > 0 && ` · Prioritas ${s.priority}`}
               </p>
             </div>
             <button
               onClick={() => setConfirmDelete(s)}
-              className="rounded-md border border-border px-2.5 py-1.5 text-xs text-text-muted hover:border-danger/50 hover:text-danger"
+              className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:border-rose-400/50 hover:text-rose-600 dark:text-rose-400"
             >
               Hapus
             </button>
           </div>
         ))}
       </div>
+      <Pagination page={page} totalPages={Math.max(1, Math.ceil(schedules.length/10))} onPageChange={setPage} />
+      </>);})()}
 
       {showAdd && (
         <Modal title="Buat jadwal baru" onClose={() => setShowAdd(false)}>
           <form onSubmit={createSchedule} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">Layar</label>
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Layar</label>
               <select
                 value={form.display_id}
                 onChange={(e) => setForm((f) => ({ ...f, display_id: e.target.value }))}
-                className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 {displays.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -171,11 +165,11 @@ export default function SchedulesPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">Playlist</label>
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Playlist</label>
               <select
                 value={form.playlist_id}
                 onChange={(e) => setForm((f) => ({ ...f, playlist_id: e.target.value }))}
-                className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 {playlists.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -186,7 +180,7 @@ export default function SchedulesPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                 Hari (kosongkan untuk setiap hari)
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -197,8 +191,8 @@ export default function SchedulesPage() {
                     onClick={() => toggleDay(d.value)}
                     className={`rounded-md px-2.5 py-1.5 text-xs ${
                       form.days.has(d.value)
-                        ? "bg-signal text-white"
-                        : "border border-border text-text-muted"
+                        ? "bg-emerald-600 text-white"
+                        : "border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400"
                     }`}
                   >
                     {d.label}
@@ -209,27 +203,27 @@ export default function SchedulesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Mulai</label>
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Mulai</label>
                 <input
                   type="time"
                   value={form.start_time}
                   onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Selesai</label>
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Selesai</label>
                 <input
                   type="time"
                   value={form.end_time}
                   onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                 Prioritas (untuk jadwal yang tumpang tindih, angka lebih besar menang)
               </label>
               <input
@@ -238,14 +232,14 @@ export default function SchedulesPage() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, priority: parseInt(e.target.value, 10) || 0 }))
                 }
-                className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
             </div>
 
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="bg-emerald-600 hover:bg-emerald-700 w-full cursor-pointer rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Buat jadwal"}
             </button>
@@ -255,17 +249,17 @@ export default function SchedulesPage() {
 
       {confirmDelete && (
         <Modal title="Hapus jadwal?" onClose={() => setConfirmDelete(null)}>
-          <p className="text-sm text-text-muted">Jadwal ini akan dihapus permanen.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Jadwal ini akan dihapus permanen.</p>
           <div className="mt-5 flex justify-end gap-2">
             <button
               onClick={() => setConfirmDelete(null)}
-              className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text"
+              className="rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"
             >
               Batal
             </button>
             <button
               onClick={() => deleteSchedule(confirmDelete.id)}
-              className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Hapus
             </button>

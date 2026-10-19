@@ -62,7 +62,7 @@ export default function SystemClock() {
   const formattedTime = `${dayName}, ${dateNum} ${monthName} ${year} ${hours}:${minutes}:${seconds} WIB`;
 
   return (
-    <div className="px-1 py-2 text-xs text-text-muted" title="Waktu Server Sistem">
+    <div className="px-1 py-2 text-xs text-slate-500 dark:text-slate-400" title="Waktu Server Sistem">
       {formattedTime}
     </div>
   );

@@ -11,7 +11,7 @@ export default function StatusDot({ lastSeen }: { lastSeen: string | null }) {
           boxShadow: online ? "0 0 8px var(--online)" : "none",
         }}
       />
-      <span className={online ? "text-online" : "text-text-muted"}>
+      <span className={online ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"}>
         {online ? "Online" : "Offline"}
       </span>
     </span>

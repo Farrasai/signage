@@ -61,12 +61,12 @@ export default function DisplayPairingPage() {
   }
 
   if (checking) {
-    return <div className="h-screen w-screen bg-bg" />;
+    return <div className="h-screen w-screen bg-slate-950" />;
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-center bg-bg px-6 text-center">
-      <span className="mb-6 h-2.5 w-2.5 rounded-full bg-signal shadow-[0_0_12px_var(--signal)]" />
+    <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 px-6 text-center">
+      <span className="mb-6 h-2.5 w-2.5 rounded-full bg-emerald-600 shadow-[0_0_12px_var(--signal)]" />
       <h1 className="font-display text-2xl font-semibold text-white sm:text-3xl">
         Pasangkan Layar Ini
       </h1>
@@ -83,12 +83,12 @@ export default function DisplayPairingPage() {
           inputMode="numeric"
           pattern="[0-9]*"
           placeholder="482913"
-          className="w-full rounded-xl border-2 border-white/15 bg-white/5 px-4 py-4 text-center font-mono text-3xl tracking-[0.4em] text-white outline-none focus:border-signal"
+          className="w-full rounded-xl border-2 border-white/15 bg-white/5 px-4 py-4 text-center font-mono text-3xl tracking-[0.4em] text-white outline-none focus:border-emerald-500"
         />
 
-        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+        {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
         {pairedName && !error && (
-          <p className="mt-3 text-sm text-online">
+          <p className="mt-3 text-sm text-emerald-400">
             Berhasil dipasangkan ke &ldquo;{pairedName}&rdquo;, memuat layar...
           </p>
         )}

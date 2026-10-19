@@ -5,12 +5,15 @@ import { createClient } from "@/lib/supabase/client";
 import type { Announcement, AnnouncerItem, DayOfWeek, Display } from "@/lib/types";
 import { DAYS } from "@/lib/types";
 import Modal from "@/components/Modal";
+import Pagination from "@/components/Pagination";
 import StatusDot from "@/components/StatusDot";
 
 type TabMode = "schedules" | "broadcast";
 
 export default function AnnouncerPage() {
   const [activeTab, setActiveTab] = useState<TabMode>("schedules");
+  const [annPage, setAnnPage] = useState(1);
+  const [queuePage, setQueuePage] = useState(1);
   const [displays, setDisplays] = useState<Display[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -361,62 +364,11 @@ export default function AnnouncerPage() {
   return (
     <div>
       {/* Header & Tabs */}
-      <header className="mb-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">Pengumuman Suara</h1>
-            <p className="mt-1 text-sm text-text-muted">
-              Atur jadwal pengumuman otomatis atau siarkan audio langsung ke TV tanpa mengganggu playlist visual.
-            </p>
-          </div>
-
-          {activeTab === "schedules" ? (
-            <button
-              onClick={openAddScheduleModal}
-              className="shrink-0 rounded-lg bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
-            >
-              + Tambah Jadwal
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowBroadcastModal(true)}
-              className="shrink-0 rounded-lg bg-signal text-white px-4 py-2 text-sm font-medium hover:opacity-90"
-            >
-              + Siaran Langsung
-            </button>
-          )}
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="mt-6 flex border-b border-border">
-          <button
-            onClick={() => setActiveTab("schedules")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === "schedules"
-                ? "border-signal text-text"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            🗓 Jadwal Pengumuman ({announcements.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("broadcast")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === "broadcast"
-                ? "border-signal text-text"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            ⚡ Siaran Langsung & Antrean {queue.length > 0 && `(${queue.length})`}
-          </button>
-        </div>
-      </header>
-
       {/* Alert Notifikasi Aksi */}
       {actionNotice && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-signal/30 bg-signal-soft px-4 py-3 text-sm text-text">
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-600-soft px-4 py-3 text-sm text-slate-900 dark:text-white">
           <span>✓ {actionNotice}</span>
-          <button onClick={() => setActionNotice(null)} className="text-text-muted hover:text-text">
+          <button onClick={() => setActionNotice(null)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white">
             ✕
           </button>
         </div>
@@ -425,18 +377,18 @@ export default function AnnouncerPage() {
       {/* ================= TAB 1: PENGUMUMAN TERJADWAL ================= */}
       {activeTab === "schedules" && (
         <div className="space-y-4">
-          <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+          <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             {loading ? (
-              <div className="px-4 py-12 text-center text-sm text-text-muted">Memuat data jadwal...</div>
+              <div className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">Memuat data jadwal...</div>
             ) : announcements.length === 0 ? (
               <div className="px-4 py-12 text-center">
-                <p className="text-base font-medium text-text">Belum ada jadwal pengumuman.</p>
-                <p className="mt-1 text-xs text-text-muted">
+                <p className="text-base font-medium text-slate-900 dark:text-white">Belum ada jadwal pengumuman.</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Buat pengumuman bersuara yang akan otomatis diputar pada jam dan hari tertentu.
                 </p>
                 <button
                   onClick={openAddScheduleModal}
-                  className="mt-4 rounded-lg bg-signal text-white px-4 py-2 text-xs font-medium"
+                  className="mt-4 rounded-lg bg-emerald-600 text-white px-4 py-2 text-xs font-medium"
                 >
                   Buat Jadwal Pertama
                 </button>
@@ -445,7 +397,7 @@ export default function AnnouncerPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-border bg-surface-2 text-xs text-text-muted">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400">
                       <th className="px-4 py-3 font-medium">Status</th>
                       <th className="px-4 py-3 font-medium">Label & Pratinjau</th>
                       <th className="px-4 py-3 font-medium">Jam Tayang</th>
@@ -459,7 +411,7 @@ export default function AnnouncerPage() {
                     {announcements.map((item) => {
                       const isPlaying = previewAudioId === item.id;
                       return (
-                        <tr key={item.id} className="transition-colors hover:bg-surface-2/50">
+                        <tr key={item.id} className="transition-colors hover:bg-slate-100 dark:bg-slate-800/50">
                           {/* Toggle Status */}
                           <td className="px-4 py-3.5">
                             <label className="relative inline-flex cursor-pointer items-center" title={item.is_enabled ? "Jadwal Aktif (klik untuk nonaktifkan)" : "Jadwal Nonaktif (klik untuk aktifkan)"}>
@@ -469,7 +421,7 @@ export default function AnnouncerPage() {
                                 onChange={() => handleToggleEnabled(item)}
                                 className="peer sr-only"
                               />
-                              <div className="h-5 w-9 rounded-full bg-border peer-checked:bg-signal peer-focus:outline-none after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
+                              <div className="h-5 w-9 rounded-full bg-border peer-checked:bg-emerald-600 peer-focus:outline-none after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
                             </label>
                           </td>
 
@@ -480,20 +432,20 @@ export default function AnnouncerPage() {
                                 onClick={() => togglePreviewAudio(item.id, item.audio_url)}
                                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
                                   isPlaying
-                                    ? "bg-signal text-white animate-pulse"
-                                    : "border border-border text-text-muted hover:border-signal hover:text-text"
+                                    ? "bg-emerald-600 text-white animate-pulse"
+                                    : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:border-emerald-500 hover:text-slate-900 dark:text-white"
                                 }`}
                                 title={isPlaying ? "Jeda pratinjau audio" : "Dengarkan audio"}
                               >
                                 {isPlaying ? "⏸" : "▶"}
                               </button>
-                              <span className="font-medium text-text">{item.label}</span>
+                              <span className="font-medium text-slate-900 dark:text-white">{item.label}</span>
                             </div>
                           </td>
 
                           {/* Jam Tayang */}
                           <td className="px-4 py-3.5">
-                            <span className="font-mono text-sm font-semibold text-text">
+                            <span className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
                               {item.time.slice(0, 5)}
                             </span>
                           </td>
@@ -501,7 +453,7 @@ export default function AnnouncerPage() {
                           {/* Hari Aktif */}
                           <td className="px-4 py-3.5">
                             {item.days_of_week.length === 0 ? (
-                              <span className="rounded bg-surface-2 px-2 py-0.5 text-xs text-text-muted">
+                              <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
                                 Setiap hari
                               </span>
                             ) : (
@@ -511,7 +463,7 @@ export default function AnnouncerPage() {
                                   return (
                                     <span
                                       key={day}
-                                      className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-text-muted"
+                                      className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400"
                                     >
                                       {dInfo?.label ?? day}
                                     </span>
@@ -522,7 +474,7 @@ export default function AnnouncerPage() {
                           </td>
 
                           {/* Target Layar */}
-                          <td className="px-4 py-3.5 text-text-muted">
+                          <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400">
                             {item.target_display_ids.length === 0 ? (
                               <span className="text-xs">Semua layar</span>
                             ) : (
@@ -531,7 +483,7 @@ export default function AnnouncerPage() {
                           </td>
 
                           {/* Repeat Count */}
-                          <td className="px-4 py-3.5 text-xs text-text-muted">
+                          <td className="px-4 py-3.5 text-xs text-slate-500 dark:text-slate-400">
                             {item.repeat_count}x
                           </td>
 
@@ -540,20 +492,20 @@ export default function AnnouncerPage() {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => handleTriggerNow(item)}
-                                className="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:border-signal hover:text-text"
+                                className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:border-emerald-500 hover:text-slate-900 dark:text-white"
                                 title="Bunyikan sekarang ke layar TV tanpa menunggu jam jadwal"
                               >
                                 ▶ Bunyikan
                               </button>
                               <button
                                 onClick={() => openEditScheduleModal(item)}
-                                className="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+                                className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:bg-slate-800 hover:text-slate-900 dark:text-white"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => setConfirmDeleteSchedule(item)}
-                                className="rounded-md border border-border px-2.5 py-1 text-xs text-text-muted transition-colors hover:border-danger hover:text-danger"
+                                className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:border-rose-400 hover:text-rose-600 dark:text-rose-400"
                               >
                                 Hapus
                               </button>
@@ -573,19 +525,19 @@ export default function AnnouncerPage() {
       {/* ================= TAB 2: SIARAN LANGSUNG ================= */}
       {activeTab === "broadcast" && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-surface">
-            <div className="border-b border-border px-4 py-3">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div className="border-b border-slate-200 dark:border-slate-800 px-4 py-3">
               <h2 className="text-sm font-medium">
                 Antrean Pemutaran di TV{queue.length > 0 && ` (${queue.length} item)`}
               </h2>
             </div>
 
             {loading && (
-              <div className="px-4 py-8 text-center text-sm text-text-muted">Memuat antrean...</div>
+              <div className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Memuat antrean...</div>
             )}
 
             {!loading && queue.length === 0 && (
-              <div className="px-4 py-10 text-center text-sm text-text-muted">
+              <div className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                 Tidak ada siaran suara yang sedang aktif atau mengantre.
               </div>
             )}
@@ -602,7 +554,7 @@ export default function AnnouncerPage() {
 
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{item.label}</p>
-                      <p className="text-xs text-text-muted">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         Diulang {item.repeat_count}x
                         {item.target_display_ids.length > 0
                           ? ` · ${item.target_display_ids.length} layar`
@@ -618,7 +570,7 @@ export default function AnnouncerPage() {
 
                     <button
                       onClick={() => handleCancelQueueItem(item)}
-                      className="shrink-0 text-xs text-text-muted hover:text-danger"
+                      className="shrink-0 text-xs text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:text-rose-400"
                       title="Batalkan siaran ini dari antrean"
                     >
                       Batal
@@ -639,37 +591,37 @@ export default function AnnouncerPage() {
         >
           <form onSubmit={handleSaveSchedule} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">Label pengumuman</label>
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Label pengumuman</label>
               <input
                 value={schedLabel}
                 onChange={(e) => setSchedLabel(e.target.value)}
                 placeholder="Contoh: Bel Masuk Kerja / Pengumuman Layanan"
-                className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
               />
-              <p className="mt-1 text-xs text-text-muted">Teks ini tampil pada badge 🎤 melayang di layar TV.</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Teks ini tampil pada badge 🎤 melayang di layar TV.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Waktu tayang</label>
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Waktu tayang</label>
                 <input
                   type="time"
                   value={schedTime}
                   onChange={(e) => setSchedTime(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm text-text-muted">Jumlah pengulangan</label>
-                <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
+                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Jumlah pengulangan</label>
+                <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
                   {([1, 2, 3] as const).map((n) => (
                     <button
                       key={n}
                       type="button"
                       onClick={() => setSchedRepeat(n)}
-                      className={`flex-1 rounded-md py-1.5 text-sm ${
-                        schedRepeat === n ? "bg-surface text-text font-medium" : "text-text-muted"
+                      className={`flex-1 rounded-lg py-1.5 text-sm ${
+                        schedRepeat === n ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
                       }`}
                     >
                       {n}x
@@ -682,11 +634,11 @@ export default function AnnouncerPage() {
             {/* Hari Aktif */}
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-sm text-text-muted">Hari tayang</label>
+                <label className="text-sm text-slate-500 dark:text-slate-400">Hari tayang</label>
                 <button
                   type="button"
                   onClick={() => setSchedDays(schedDays.size === DAYS.length ? new Set() : new Set(DAYS.map((d) => d.value)))}
-                  className="text-xs text-signal hover:underline"
+                  className="text-xs text-emerald-600 hover:underline"
                 >
                   {schedDays.size === DAYS.length ? "Hapus Pilihan (Setiap Hari)" : "Pilih Semua Hari"}
                 </button>
@@ -699,8 +651,8 @@ export default function AnnouncerPage() {
                     onClick={() => toggleDay(d.value)}
                     className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
                       schedDays.has(d.value)
-                        ? "bg-signal text-white"
-                        : "border border-border text-text-muted hover:border-signal/50"
+                        ? "bg-emerald-600 text-white"
+                        : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
                     }`}
                   >
                     {d.label}
@@ -708,26 +660,26 @@ export default function AnnouncerPage() {
                 ))}
               </div>
               {schedDays.size === 0 && (
-                <p className="mt-1 text-xs text-text-muted">Berlaku setiap hari (tidak ada batasan hari).</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Berlaku setiap hari (tidak ada batasan hari).</p>
               )}
             </div>
 
             {/* Upload File Audio */}
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                 {editingSchedule ? "File audio (kosongkan jika tidak ingin mengganti)" : "File audio (.mp3, .wav, .ogg)"}
               </label>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-6 text-sm text-text-muted hover:border-signal/50">
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 py-6 text-sm text-slate-500 dark:text-slate-400 hover:border-emerald-500/50">
                 {schedFile ? (
                   <>
                     <span className="text-base">🎵</span>
-                    <span className="font-medium text-text">{schedFile.name}</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{schedFile.name}</span>
                     <span className="text-xs">{(schedFile.size / 1024 / 1024).toFixed(2)} MB</span>
                   </>
                 ) : editingSchedule ? (
                   <>
                     <span>Audio tersimpan saat ini</span>
-                    <span className="text-xs text-text-muted">Klik untuk memilih file pengganti</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Klik untuk memilih file pengganti</span>
                   </>
                 ) : (
                   <>
@@ -748,13 +700,13 @@ export default function AnnouncerPage() {
 
             {/* Target Layar */}
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">Tayangkan ke</label>
-              <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Tayangkan ke</label>
+              <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
                 <button
                   type="button"
                   onClick={() => setSchedTargetMode("all")}
-                  className={`flex-1 rounded-md py-1.5 text-sm ${
-                    schedTargetMode === "all" ? "bg-surface text-text font-medium" : "text-text-muted"
+                  className={`flex-1 rounded-lg py-1.5 text-sm ${
+                    schedTargetMode === "all" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   Semua layar
@@ -762,8 +714,8 @@ export default function AnnouncerPage() {
                 <button
                   type="button"
                   onClick={() => setSchedTargetMode("specific")}
-                  className={`flex-1 rounded-md py-1.5 text-sm ${
-                    schedTargetMode === "specific" ? "bg-surface text-text font-medium" : "text-text-muted"
+                  className={`flex-1 rounded-lg py-1.5 text-sm ${
+                    schedTargetMode === "specific" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   Pilih layar
@@ -771,16 +723,16 @@ export default function AnnouncerPage() {
               </div>
 
               {schedTargetMode === "specific" && (
-                <div className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+                <div className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 p-2">
                   {displays.length === 0 && (
-                    <p className="px-2 py-3 text-center text-xs text-text-muted">
+                    <p className="px-2 py-3 text-center text-xs text-slate-500 dark:text-slate-400">
                       Belum ada layar terdaftar.
                     </p>
                   )}
                   {displays.map((d) => (
                     <label
                       key={d.id}
-                      className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-surface"
+                      className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-white dark:bg-slate-900"
                     >
                       <span className="flex items-center gap-2.5">
                         <input
@@ -794,7 +746,7 @@ export default function AnnouncerPage() {
                               return next;
                             });
                           }}
-                          className="accent-signal"
+                          className="accent-emerald-600"
                         />
                         {d.name}
                       </span>
@@ -808,8 +760,8 @@ export default function AnnouncerPage() {
             {/* Switch Enable */}
             <div className="flex items-center justify-between pt-2">
               <div>
-                <p className="text-sm font-medium text-text">Status jadwal</p>
-                <p className="text-xs text-text-muted">Aktifkan pengumuman ini untuk diputar sesuai jadwal.</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">Status jadwal</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Aktifkan pengumuman ini untuk diputar sesuai jadwal.</p>
               </div>
               <label className="relative inline-flex cursor-pointer items-center">
                 <input
@@ -818,16 +770,16 @@ export default function AnnouncerPage() {
                   onChange={(e) => setSchedEnabled(e.target.checked)}
                   className="peer sr-only"
                 />
-                <div className="h-5 w-9 rounded-full bg-border peer-checked:bg-signal peer-focus:outline-none after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
+                <div className="h-5 w-9 rounded-full bg-border peer-checked:bg-emerald-600 peer-focus:outline-none after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
               </label>
             </div>
 
-            {schedError && <p className="text-sm text-danger">{schedError}</p>}
+            {schedError && <p className="text-sm text-rose-600 dark:text-rose-400">{schedError}</p>}
 
             <button
               type="submit"
               disabled={schedSaving}
-              className="w-full rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {schedSaving ? "Menyimpan..." : editingSchedule ? "Simpan Perubahan" : "Buat Jadwal"}
             </button>
@@ -839,23 +791,23 @@ export default function AnnouncerPage() {
       {confirmDeleteSchedule && (
         <Modal title="Hapus Jadwal Pengumuman" onClose={() => setConfirmDeleteSchedule(null)}>
           <div className="space-y-4">
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Apakah Anda yakin ingin menghapus jadwal pengumuman{" "}
-              <strong className="text-text">&ldquo;{confirmDeleteSchedule.label}&rdquo;</strong>?
+              <strong className="text-slate-900 dark:text-white">&ldquo;{confirmDeleteSchedule.label}&rdquo;</strong>?
               File audio terkait juga akan dibersihkan dari penyimpanan.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmDeleteSchedule(null)}
-                className="rounded-md border border-border px-4 py-2 text-sm text-text-muted hover:text-text"
+                className="rounded-md border border-slate-200 dark:border-slate-800 px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleDeleteSchedule}
-                className="rounded-md bg-danger px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
               >
                 Hapus
               </button>
@@ -869,24 +821,24 @@ export default function AnnouncerPage() {
         <Modal title="Mulai Siaran Suara Langsung" onClose={() => setShowBroadcastModal(false)}>
           <form onSubmit={handleBroadcastSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">Label siaran</label>
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Label siaran</label>
               <input
                 value={broadcastLabel}
                 onChange={(e) => setBroadcastLabel(e.target.value)}
                 placeholder="Contoh: Pengumuman Darurat Siang"
-                className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-signal"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
                 File audio (.mp3, .wav, .ogg)
               </label>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-6 text-sm text-text-muted hover:border-signal/50">
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 py-6 text-sm text-slate-500 dark:text-slate-400 hover:border-emerald-500/50">
                 {broadcastFile ? (
                   <>
                     <span className="text-base">🎵</span>
-                    <span className="font-medium text-text">{broadcastFile.name}</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{broadcastFile.name}</span>
                     <span className="text-xs">{(broadcastFile.size / 1024 / 1024).toFixed(2)} MB</span>
                   </>
                 ) : (
@@ -907,15 +859,15 @@ export default function AnnouncerPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">Diulang</label>
-              <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Diulang</label>
+              <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
                 {([1, 2, 3] as const).map((n) => (
                   <button
                     key={n}
                     type="button"
                     onClick={() => setBroadcastRepeat(n)}
-                    className={`flex-1 rounded-md py-1.5 text-sm ${
-                      broadcastRepeat === n ? "bg-surface text-text font-medium" : "text-text-muted"
+                    className={`flex-1 rounded-lg py-1.5 text-sm ${
+                      broadcastRepeat === n ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
                     }`}
                   >
                     {n}x
@@ -925,13 +877,13 @@ export default function AnnouncerPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-text-muted">Tayangkan ke</label>
-              <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
+              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Tayangkan ke</label>
+              <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
                 <button
                   type="button"
                   onClick={() => setBroadcastTargetMode("all")}
-                  className={`flex-1 rounded-md py-1.5 text-sm ${
-                    broadcastTargetMode === "all" ? "bg-surface text-text font-medium" : "text-text-muted"
+                  className={`flex-1 rounded-lg py-1.5 text-sm ${
+                    broadcastTargetMode === "all" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   Semua layar
@@ -939,8 +891,8 @@ export default function AnnouncerPage() {
                 <button
                   type="button"
                   onClick={() => setBroadcastTargetMode("specific")}
-                  className={`flex-1 rounded-md py-1.5 text-sm ${
-                    broadcastTargetMode === "specific" ? "bg-surface text-text font-medium" : "text-text-muted"
+                  className={`flex-1 rounded-lg py-1.5 text-sm ${
+                    broadcastTargetMode === "specific" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   Pilih layar
@@ -948,16 +900,16 @@ export default function AnnouncerPage() {
               </div>
 
               {broadcastTargetMode === "specific" && (
-                <div className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+                <div className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 p-2">
                   {displays.length === 0 && (
-                    <p className="px-2 py-3 text-center text-xs text-text-muted">
+                    <p className="px-2 py-3 text-center text-xs text-slate-500 dark:text-slate-400">
                       Belum ada layar terdaftar.
                     </p>
                   )}
                   {displays.map((d) => (
                     <label
                       key={d.id}
-                      className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-surface"
+                      className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-white dark:bg-slate-900"
                     >
                       <span className="flex items-center gap-2.5">
                         <input
@@ -971,7 +923,7 @@ export default function AnnouncerPage() {
                               return next;
                             });
                           }}
-                          className="accent-signal"
+                          className="accent-emerald-600"
                         />
                         {d.name}
                       </span>
@@ -982,12 +934,12 @@ export default function AnnouncerPage() {
               )}
             </div>
 
-            {broadcastError && <p className="text-sm text-danger">{broadcastError}</p>}
+            {broadcastError && <p className="text-sm text-rose-600 dark:text-rose-400">{broadcastError}</p>}
 
             <button
               type="submit"
               disabled={broadcastUploading}
-              className="w-full rounded-lg bg-signal text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
               {broadcastUploading ? "Mengunggah..." : "🎤 Mulai Siaran Sekarang"}
             </button>

@@ -508,8 +508,8 @@ export default function DisplayPlayerPage() {
         <div className="max-w-md px-6 text-center">
           {!slug ? (
             <>
-              <p className="text-lg text-text-muted">URL layar tidak lengkap.</p>
-              <p className="mt-3 text-xs text-text-muted">
+              <p className="text-lg text-slate-400">URL layar tidak lengkap.</p>
+              <p className="mt-3 text-xs text-slate-400">
                 URL harus berbentuk <code>/display/nama-slug-layar</code> (ada nama layarnya
                 setelah <code>/display/</code>). Buka lagi lewat tombol &ldquo;Buka ↗&rdquo; atau
                 &ldquo;Salin URL&rdquo; di halaman Layar &amp; TV pada dashboard, jangan mengetik
@@ -518,11 +518,11 @@ export default function DisplayPlayerPage() {
             </>
           ) : (
             <>
-              <p className="text-lg text-text-muted">Layar tidak ditemukan.</p>
-              <p className="mt-1 text-sm text-text-muted">
+              <p className="text-lg text-slate-400">Layar tidak ditemukan.</p>
+              <p className="mt-1 text-sm text-slate-400">
                 Slug yang dicari: <span className="font-mono text-white/70">{slug}</span>
               </p>
-              <p className="mt-3 text-xs text-text-muted">
+              <p className="mt-3 text-xs text-slate-400">
                 Periksa kembali URL yang diberikan di dashboard. Jika slug di atas sudah benar-benar
                 sesuai dengan yang ada di dashboard, kemungkinan kebijakan akses publik (RLS) untuk
                 tabel <code>displays</code> di Supabase belum aktif untuk pengguna anonim.

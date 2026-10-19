@@ -16,12 +16,15 @@ export interface Media {
   thumbnail_url: string | null;
   content: TableContent | null;
   created_at: string;
+  owner_id: string | null;
 }
 
 export interface Playlist {
   id: string;
   name: string;
   created_at: string;
+  owner_id: string | null;
+  bidang: Bidang | null;
 }
 
 export interface PlaylistItem {
@@ -31,6 +34,27 @@ export interface PlaylistItem {
   sort_order: number;
   duration_override: number | null;
   media?: Media;
+}
+
+export type Role = "admin" | "operator_bidang";
+export type Bidang = "TU" | "INTEL" | "BIN" | "PIDSUS" | "PIDUM" | "DATUN" | "PAPBB";
+export const BIDANG_OPTIONS: { value: Bidang; label: string }[] = [
+  { value: "TU", label: "TU" },
+  { value: "INTEL", label: "INTEL" },
+  { value: "BIN", label: "BIN" },
+  { value: "PIDSUS", label: "PIDSUS" },
+  { value: "PIDUM", label: "PIDUM" },
+  { value: "DATUN", label: "DATUN" },
+  { value: "PAPBB", label: "PAPBB" },
+];
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: Role;
+  bidang: Bidang | null;
+  created_by: string | null;
+  created_at: string;
 }
 
 export interface Display {
@@ -43,6 +67,8 @@ export interface Display {
   is_paused: boolean;
   last_seen: string | null;
   created_at: string;
+  owner_id: string | null;
+  bidang: Bidang | null;
 }
 
 export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -66,6 +92,7 @@ export interface Schedule {
   end_time: string;
   priority: number;
   created_at: string;
+  owner_id: string | null;
 }
 
 export type RemoteCommandType = "refresh" | "next" | "prev" | "play" | "pause";

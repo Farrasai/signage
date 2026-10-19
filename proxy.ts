@@ -42,6 +42,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Role guard: Operator Bidang tidak boleh akses Announcer / Emergency / Users
+  if (isDashboard && user) {
+    const adminOnlyPrefixes = ["/dashboard/announcer", "/dashboard/emergency", "/dashboard/users"];
+    const isAdminOnlyPath = adminOnlyPrefixes.some((p) => path === p || path.startsWith(p + "/"));
+    if (isAdminOnlyPath) {
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      const role = (profile as { role?: string } | null)?.role;
+      // Jika profile belum ada (belum migrasi) atau admin, izinkan. Hanya operator_bidang yang di-redirect
+      if (role === "operator_bidang") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   return response;
 }
 
