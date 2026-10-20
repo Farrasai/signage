@@ -131,6 +131,8 @@ export interface AnnouncerItem {
   id: string;
   label: string;
   audio_url: string;
+  storage_path: string | null;
+  source_announcement_id: string | null;
   /** Berapa kali audio diputar sebelum berhenti otomatis (1–3). */
   repeat_count: number;
   /** Kosong ([]) = semua layar. Tidak kosong = hanya layar yang terdaftar. */
@@ -143,6 +145,7 @@ export interface Announcement {
   id: string;
   label: string;
   audio_url: string;
+  storage_path: string | null;
   /** Format "HH:mm" atau "HH:mm:ss" */
   time: string;
   /** Hari aktif. Kosong ([]) artinya berlaku setiap hari. */

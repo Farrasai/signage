@@ -8,6 +8,18 @@ import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
 import StatusDot from "@/components/StatusDot";
 
+function getStoragePath(raw: string | null): string | null {
+  try {
+    const u = raw || "";
+    const k = "/announcer/";
+    const i = u.indexOf(k);
+    if (i >= 0) return decodeURIComponent(u.slice(i + k.length).split("?")[0]);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 type TabMode = "schedules" | "broadcast";
 
 export default function AnnouncerPage() {
@@ -142,6 +154,8 @@ export default function AnnouncerPage() {
     const { error } = await supabase.from("announcer_queue").insert({
       label: item.label,
       audio_url: item.audio_url,
+      storage_path: (item.storage_path as string | null) ?? getStoragePath(item.audio_url),
+      source_announcement_id: item.id,
       repeat_count: item.repeat_count,
       target_display_ids: item.target_display_ids,
     });
@@ -219,6 +233,8 @@ export default function AnnouncerPage() {
     setSchedSaving(true);
     const supabase = createClient();
     let audioUrl = editingSchedule ? editingSchedule.audio_url : "";
+    let newStoragePath: string | null = null;
+    let oldStoragePathToDelete: string | null = null;
 
     // Upload audio jika ada file baru
     if (schedFile) {
@@ -233,28 +249,42 @@ export default function AnnouncerPage() {
         return;
       }
 
-      // Hapus audio lama jika sedang edit dan berganti file
-      if (editingSchedule && editingSchedule.audio_url) {
-        const parts = editingSchedule.audio_url.split("/");
-        const oldPath = parts.slice(parts.indexOf("announcer") + 1).join("/");
-        if (oldPath) {
-          await supabase.storage.from("announcer").remove([decodeURIComponent(oldPath)]);
-        }
-      }
-
       const { data: pub } = supabase.storage.from("announcer").getPublicUrl(path);
       audioUrl = pub.publicUrl;
+      newStoragePath = path;
+      // jangan hapus lama dulu — tunggu DB sukses (trash-safe)
+      if (editingSchedule) {
+        oldStoragePathToDelete = (editingSchedule.storage_path as string | null) ?? getStoragePath(editingSchedule.audio_url);
+      }
+      if (!audioUrl) {
+        // safety: jika getPublicUrl gagal, rollback upload
+        if (newStoragePath) await supabase.storage.from("announcer").remove([newStoragePath]);
+        setSchedError("Gagal mendapatkan URL publik audio.");
+        setSchedSaving(false);
+        return;
+      }
+    } else if (editingSchedule) {
+      // tidak ganti file — pertahankan storage_path lama
+      newStoragePath = (editingSchedule.storage_path as string | null) ?? getStoragePath(editingSchedule.audio_url);
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       label: schedLabel.trim(),
       audio_url: audioUrl,
+      storage_path: newStoragePath,
       time: schedTime,
       days_of_week: Array.from(schedDays),
       repeat_count: schedRepeat,
       target_display_ids: schedTargetMode === "all" ? [] : Array.from(schedSelectedDisplays),
       is_enabled: schedEnabled,
     };
+
+    if (!payload.audio_url || (payload.audio_url as string).trim() === "") {
+      if (newStoragePath) await supabase.storage.from("announcer").remove([newStoragePath]);
+      setSchedError("Audio URL tidak boleh kosong.");
+      setSchedSaving(false);
+      return;
+    }
 
     if (editingSchedule) {
       const { error: updateError } = await supabase
@@ -263,13 +293,22 @@ export default function AnnouncerPage() {
         .eq("id", editingSchedule.id);
 
       if (updateError) {
+        // rollback: hapus file baru yang sudah ter-upload
+        if (newStoragePath && newStoragePath !== (editingSchedule.storage_path as string | null)) {
+          await supabase.storage.from("announcer").remove([newStoragePath]);
+        }
         setSchedError(`Gagal memperbarui: ${updateError.message}`);
         setSchedSaving(false);
         return;
       }
+      // sukses: baru hapus file lama
+      if (oldStoragePathToDelete && oldStoragePathToDelete !== newStoragePath) {
+        await supabase.storage.from("announcer").remove([oldStoragePathToDelete]);
+      }
     } else {
       const { error: insertError } = await supabase.from("announcements").insert(payload);
       if (insertError) {
+        if (newStoragePath) await supabase.storage.from("announcer").remove([newStoragePath]);
         setSchedError(`Gagal menyimpan: ${insertError.message}`);
         setSchedSaving(false);
         return;
@@ -286,11 +325,10 @@ export default function AnnouncerPage() {
     if (!confirmDeleteSchedule) return;
     const supabase = createClient();
 
-    // Bersihkan file audio dari storage
-    const parts = confirmDeleteSchedule.audio_url.split("/");
-    const oldPath = parts.slice(parts.indexOf("announcer") + 1).join("/");
-    if (oldPath) {
-      await supabase.storage.from("announcer").remove([decodeURIComponent(oldPath)]);
+    const storagePath = (confirmDeleteSchedule.storage_path as string | null) ?? getStoragePath(confirmDeleteSchedule.audio_url);
+    // hapus file dulu (best-effort) lalu row — delete row tidak tergantung storage
+    if (storagePath) {
+      await supabase.storage.from("announcer").remove([storagePath]);
     }
 
     await supabase.from("announcements").delete().eq("id", confirmDeleteSchedule.id);
@@ -330,6 +368,8 @@ export default function AnnouncerPage() {
     await supabase.from("announcer_queue").insert({
       label: broadcastLabel.trim() || "Pengumuman",
       audio_url: pub.publicUrl,
+      storage_path: path,
+      source_announcement_id: null,
       repeat_count: broadcastRepeat,
       target_display_ids: broadcastTargetMode === "all" ? [] : Array.from(broadcastSelectedDisplays),
     });
@@ -343,10 +383,13 @@ export default function AnnouncerPage() {
   // ---------- Cancel Queue Item ----------
   async function handleCancelQueueItem(item: AnnouncerItem) {
     const supabase = createClient();
-    const parts = item.audio_url.split("/");
-    const storagePath = parts.slice(parts.indexOf("announcer") + 1).join("/");
-    if (storagePath) {
-      await supabase.storage.from("announcer").remove([decodeURIComponent(storagePath)]);
+    // Ownership: jika dari announcements, JANGAN hapus file (masih dipakai master)
+    const isOwnedByAnnouncement = Boolean((item as unknown as { source_announcement_id?: string | null }).source_announcement_id);
+    if (!isOwnedByAnnouncement) {
+      const storagePath = (item as unknown as { storage_path?: string | null }).storage_path ?? getStoragePath(item.audio_url);
+      if (storagePath) {
+        await supabase.storage.from("announcer").remove([storagePath]);
+      }
     }
     await supabase.from("announcer_queue").delete().eq("id", item.id);
   }

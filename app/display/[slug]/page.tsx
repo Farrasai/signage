@@ -361,6 +361,8 @@ export default function DisplayPlayerPage() {
                 id: itemId,
                 label: ann.label,
                 audio_url: ann.audio_url,
+                storage_path: (ann as any).storage_path ?? null,
+                source_announcement_id: ann.id,
                 repeat_count: ann.repeat_count || 1,
                 target_display_ids: targetIds,
                 created_at: new Date().toISOString(),
