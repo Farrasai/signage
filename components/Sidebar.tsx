@@ -97,7 +97,7 @@ export default function Sidebar({
           <Link
             href="/dashboard/users"
             onClick={onNavigate}
-            className={`mt-2 flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium ${pathname.startsWith("/dashboard/users") ? "border-transparent bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
+            className={`mt-2 flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium ${pathname.startsWith("/dashboard/users") ? "border-transparent bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"}`}
           >
             <span className="flex items-center gap-2">Manajemen User</span>
           </Link>
