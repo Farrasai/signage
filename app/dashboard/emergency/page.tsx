@@ -9,7 +9,8 @@ import EmergencyOverlay from "@/components/EmergencyOverlay";
 
 const DEFAULT_TITLE = "PENGUMUMAN DARURAT LAYANAN";
 const PRESETS = [
-  { label: "Default (Tes)", title: "PENGUMUMAN", message: "tes" },
+  { label: "Default", title: "PENGUMUMAN", message: "tes" },
+  { label: "Rapat Staf AA", title: "PENGUMUMAN", message: "Mohon segera menuju titik kumpul di Ruang Aula" },
   { label: "Evakuasi Gedung", title: "EVAKUASI GEDUNG", message: "Mohon segera menuju titik kumpul di halaman depan. Ikuti petunjuk petugas." },
   { label: "Gangguan Layanan", title: "GANGGUAN LAYANAN", message: "Sistem sinkronisasi pusat sedang dalam pemeliharaan berkala. Pelayanan manual tetap berjalan." },
 ];
@@ -210,7 +211,7 @@ export default function EmergencyPage() {
           >
             {saving
               ? "Menayangkan..."
-              : `🚨 Tayangkan ke ${targetMode === "all" ? "Semua Layar" : `${targetCount} Layar Terpilih`}`}
+              : `Tayangkan ke ${targetMode === "all" ? "Semua Layar" : `${targetCount} Layar Terpilih`}`}
           </button>
           <p className="text-center text-xs text-slate-500 dark:text-slate-400">
             Menayangkan ulang akan memperbarui judul/pesan/target yang sedang aktif juga.
