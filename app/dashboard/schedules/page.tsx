@@ -105,7 +105,7 @@ export default function SchedulesPage() {
 
   return (
     <div>
-      <div className="mb-5 flex justify-end"><button onClick={() => setShowAdd(true)} disabled={!canCreate} className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-40">+ Buat jadwal</button></div>
+      <div className="mb-5 flex justify-end"><button data-testid="add-schedule-button" onClick={() => setShowAdd(true)} disabled={!canCreate} className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-40">+ Buat jadwal</button></div>
 
       {!canCreate && !loading && (
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
@@ -114,7 +114,7 @@ export default function SchedulesPage() {
       )}
 
       {!loading && schedules.length === 0 && canCreate && (
-        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
+        <div data-testid="schedules-empty" className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
           Belum ada jadwal. Semua layar memakai playlist default-nya.
         </div>
       )}
@@ -123,6 +123,7 @@ export default function SchedulesPage() {
         {paginated.map((s) => (
           <div
             key={s.id}
+            data-testid={`schedule-row-${s.id}`}
             className="flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
           >
             <div>
@@ -135,6 +136,7 @@ export default function SchedulesPage() {
               </p>
             </div>
             <button
+              data-testid={`delete-schedule-${s.id}`}
               onClick={() => setConfirmDelete(s)}
               className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:border-rose-400/50 hover:text-rose-600 dark:text-rose-400"
             >
@@ -152,6 +154,7 @@ export default function SchedulesPage() {
             <div>
               <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Layar</label>
               <select
+                data-testid="schedule-display-select"
                 value={form.display_id}
                 onChange={(e) => setForm((f) => ({ ...f, display_id: e.target.value }))}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -167,6 +170,7 @@ export default function SchedulesPage() {
             <div>
               <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Playlist</label>
               <select
+                data-testid="schedule-playlist-select"
                 value={form.playlist_id}
                 onChange={(e) => setForm((f) => ({ ...f, playlist_id: e.target.value }))}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -237,6 +241,7 @@ export default function SchedulesPage() {
             </div>
 
             <button
+              data-testid="schedule-submit"
               type="submit"
               disabled={saving}
               className="bg-emerald-600 hover:bg-emerald-700 w-full cursor-pointer rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-50"

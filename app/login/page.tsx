@@ -105,6 +105,7 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
+                data-testid="email-input"
                 type="email"
                 required
                 autoComplete="email"
@@ -124,6 +125,7 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
+                data-testid="password-input"
                 type="password"
                 required
                 autoComplete="current-password"
@@ -137,6 +139,7 @@ export default function LoginPage() {
             {error && (
               <p
                 role="alert"
+                data-testid="login-error"
                 className="rounded-lg border border-rose-200/30 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-600"
               >
                 {error}
@@ -145,6 +148,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              data-testid="login-submit"
               disabled={loading}
               className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
             >

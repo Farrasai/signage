@@ -95,12 +95,12 @@ export default function DisplaysPage() {
             <h2 className="text-lg font-extrabold">Kelola Layar & TV</h2>
             <p className="mt-1 max-w-xl text-sm text-white/80">Buka URL-nya langsung di browser TV, atau pasangkan lewat kode PIN dari <span className="font-mono font-bold text-lime-200">/display</span> — praktis untuk TV yang dikendalikan remote.</p>
           </div>
-          <button onClick={() => setShowAdd(true)} className="cursor-pointer rounded-xl bg-lime-400 px-4 py-2.5 text-sm font-extrabold text-emerald-950 shadow hover:bg-lime-300">+ Tambah Layar Baru</button>
+          <button data-testid="add-display-button" onClick={() => setShowAdd(true)} className="cursor-pointer rounded-xl bg-lime-400 px-4 py-2.5 text-sm font-extrabold text-emerald-950 shadow hover:bg-lime-300">+ Tambah Layar Baru</button>
         </div>
       </div>
 
       {!loading && displays.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-900">Belum ada layar. Klik &ldquo;Tambah Layar Baru&rdquo; untuk mulai.</div>
+        <div data-testid="displays-empty" className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-900">Belum ada layar. Klik &ldquo;Tambah Layar Baru&rdquo; untuk mulai.</div>
       )}
 
       <div className="space-y-5">
@@ -109,7 +109,7 @@ export default function DisplaysPage() {
           const code = pairingCodes[d.id];
           const canEdit = !profile || canEditDisplay(profile, d);
           return (
-            <div key={d.id} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm min-w-0 dark:border-slate-800 dark:bg-slate-900">
+            <div key={d.id} data-testid={`display-row-${d.id}`} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm min-w-0 dark:border-slate-800 dark:bg-slate-900">
               <div className={`relative flex items-center justify-between px-4 py-3 ${online ? "emerald-wave-pattern text-white" : "emerald-wave-offline text-white"}`}>
                 <div className="relative min-w-0">
                   <input defaultValue={d.name} onBlur={(e)=>{ if(e.target.value.trim() && e.target.value!==d.name) updateDisplay(d.id,{name:e.target.value.trim()}); }} className="w-full max-w-xs bg-transparent font-extrabold text-white placeholder:text-white/60 outline-none" placeholder="Nama layar" disabled={!canEdit} title={canEdit?"":"Hanya pemilik bidang dapat mengedit"} />
@@ -140,7 +140,7 @@ export default function DisplaysPage() {
                     <span className="text-slate-400">Terakhir aktif: {formatDateTime(d.last_seen)}</span>
                     <button onClick={()=>copyUrl(d.slug, d.id)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{copiedId===d.id?"Tersalin!":"Salin URL"}</button>
                     <a href={`/display/${d.slug}`} target="_blank" rel="noreferrer" className="cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Buka ↗</a>
-                    <button onClick={()=>setConfirmDelete(d)} className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 font-semibold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">Hapus</button>
+                    <button data-testid={`delete-display-${d.id}`} onClick={()=>setConfirmDelete(d)} className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 font-semibold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">Hapus</button>
                   </div>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/50">
@@ -157,7 +157,7 @@ export default function DisplaysPage() {
                   ) : (
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <p className="text-xs text-slate-500">Belum ada kode pairing aktif untuk layar ini.</p>
-                      <button onClick={()=>generateCode(d.id)} disabled={generatingId===d.id || !canEdit} className="cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">{generatingId===d.id?"Membuat...":"Buat Kode Pairing"}</button>
+                      <button data-testid={`generate-pairing-code-${d.id}`} onClick={()=>generateCode(d.id)} disabled={generatingId===d.id || !canEdit} className="cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">{generatingId===d.id?"Membuat...":"Buat Kode Pairing"}</button>
                     </div>
                   )}
                 </div>
@@ -179,9 +179,9 @@ export default function DisplaysPage() {
                 </div>
               )}
               <label className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-300">Nama layar</label>
-              <input autoFocus value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Contoh: TV Lobby Utama" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white" />
+              <input data-testid="display-name-input" autoFocus value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Contoh: TV Lobby Utama" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white" />
             </div>
-            <button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 w-full cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-50">{saving ? "Menyimpan..." : "Buat layar"}</button>
+            <button data-testid="display-submit" type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 w-full cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-50">{saving ? "Menyimpan..." : "Buat layar"}</button>
           </form>
         </Modal>
       )}

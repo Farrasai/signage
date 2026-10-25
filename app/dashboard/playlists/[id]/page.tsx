@@ -40,6 +40,18 @@ export default function PlaylistEditorPage() {
 
     const { data: lib } = await supabase.from("media").select("*").order("name");
     setLibrary(lib ?? []);
+
+    // Load the current user's profile so ownership checks (canEditOwner) work.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      setProfile((prof as Profile) ?? null);
+    }
+
     setLoading(false);
   }, [playlistId]);
 
@@ -127,6 +139,7 @@ export default function PlaylistEditorPage() {
           className="w-full max-w-md bg-transparent text-2xl font-semibold text-slate-900 dark:text-white outline-none focus:text-emerald-600"
         />
         <button
+          data-testid="add-content-button"
           onClick={() => setShowPicker(true)}
           className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
@@ -135,7 +148,7 @@ export default function PlaylistEditorPage() {
       </header>
 
       {items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
+        <div data-testid="playlist-detail-empty" className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
           Playlist masih kosong. Tambahkan foto, video, atau YouTube dari perpustakaan konten.
         </div>
       )}
@@ -144,6 +157,7 @@ export default function PlaylistEditorPage() {
         {items.map((item, index) => (
           <div
             key={item.id}
+            data-testid={`playlist-item-${item.id}`}
             className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3"
           >
             <span className="w-6 text-center text-sm text-slate-500 dark:text-slate-400">{index + 1}</span>
@@ -190,6 +204,7 @@ export default function PlaylistEditorPage() {
                 ↓
               </button>
               <button
+                data-testid={`remove-playlist-item-${item.id}`}
                 onClick={() => removeItem(item.id)}
                 className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
               >

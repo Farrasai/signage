@@ -381,7 +381,7 @@ export default function MediaPage() {
 
   return (
     <div>
-      <div className="mb-5 flex justify-end"><button onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95">+ Tambah konten</button></div>
+      <div className="mb-5 flex justify-end"><button data-testid="add-media-button" onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 shrink-0 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95">+ Tambah konten</button></div>
 
       {/* Toolbar: Search + Filter Pills + View Toggle */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -460,7 +460,7 @@ export default function MediaPage() {
 
       {/* Empty state: no media in DB at all */}
       {!loading && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center">
+        <div data-testid="media-empty" className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center">
           <p className="text-sm font-medium text-slate-900 dark:text-white">Perpustakaan konten kosong</p>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Unggah foto/video, tambahkan link YouTube, atau buat tabel agenda.
@@ -493,7 +493,7 @@ export default function MediaPage() {
       {!loading && filtered.length > 0 && viewMode === "grid" && (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {paginated.map((m) => (
-            <div key={m.id} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div key={m.id} data-testid={`media-card-${m.id}`} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="relative flex h-44 items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800">
                 <Thumb m={m} className="h-full w-full" />
                 <span className={`absolute left-2 top-2 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[m.type]}`}>
@@ -506,12 +506,14 @@ export default function MediaPage() {
                   <DurationInput m={m} />
                   <div className="flex items-center gap-2.5">
                     <button
+                      data-testid={`edit-media-${m.id}`}
                       onClick={() => setEditingItem(m)}
                       className="cursor-pointer rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                     >
                       Edit
                     </button>
                     <button
+                      data-testid={`delete-media-${m.id}`}
                       onClick={() => setConfirmDelete(m)}
                       className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
                     >
@@ -612,6 +614,7 @@ export default function MediaPage() {
         >
           <div className="mb-4 flex flex-wrap gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1">
             <button
+              data-testid="tab-upload"
               onClick={() => setTab("upload")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
                 tab === "upload" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
@@ -620,6 +623,7 @@ export default function MediaPage() {
               Unggah file
             </button>
             <button
+              data-testid="tab-youtube"
               onClick={() => setTab("youtube")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
                 tab === "youtube" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
@@ -628,6 +632,7 @@ export default function MediaPage() {
               YouTube
             </button>
             <button
+              data-testid="tab-cdn"
               onClick={() => setTab("cdn")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
                 tab === "cdn" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
@@ -636,6 +641,7 @@ export default function MediaPage() {
               Link CDN
             </button>
             <button
+              data-testid="tab-table"
               onClick={() => setTab("table")}
               className={`flex-1 rounded-md py-1.5 text-sm ${
                 tab === "table" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
@@ -671,6 +677,7 @@ export default function MediaPage() {
                   Link video atau playlist YouTube
                 </label>
                 <input
+                  data-testid="youtube-url-input"
                   value={ytUrl}
                   onChange={(e) => setYtUrl(e.target.value)}
                   placeholder="https://youtube.com/watch?v=... atau /playlist?list=..."
@@ -680,6 +687,7 @@ export default function MediaPage() {
               <div>
                 <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Nama (opsional)</label>
                 <input
+                  data-testid="youtube-name-input"
                   value={ytName}
                   onChange={(e) => setYtName(e.target.value)}
                   placeholder="Contoh: Playlist musik kantor"
@@ -691,6 +699,7 @@ export default function MediaPage() {
                   Durasi ditampilkan sebelum lanjut ke konten berikutnya (detik)
                 </label>
                 <input
+                  data-testid="youtube-duration-input"
                   type="number"
                   min={5}
                   value={ytDuration}
@@ -698,8 +707,9 @@ export default function MediaPage() {
                   className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
-              {ytError && <p className="text-sm text-rose-600 dark:text-rose-400">{ytError}</p>}
+              {ytError && <p data-testid="youtube-error" className="text-sm text-rose-600 dark:text-rose-400">{ytError}</p>}
               <button
+                data-testid="youtube-submit"
                 type="submit"
                 disabled={uploading}
                 className="w-full rounded-md bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
@@ -714,6 +724,7 @@ export default function MediaPage() {
                   Link langsung ke file (Cloudinary, Bunny, S3, dll.)
                 </label>
                 <input
+                  data-testid="cdn-url-input"
                   value={cdnUrl}
                   onChange={(e) => setCdnUrl(e.target.value)}
                   onBlur={handleCdnUrlBlur}
@@ -752,6 +763,7 @@ export default function MediaPage() {
               <div>
                 <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Nama (opsional)</label>
                 <input
+                  data-testid="cdn-name-input"
                   value={cdnName}
                   onChange={(e) => setCdnName(e.target.value)}
                   placeholder="Contoh: Banner Promo September"
@@ -771,8 +783,9 @@ export default function MediaPage() {
                   className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
-              {cdnError && <p className="text-sm text-rose-600 dark:text-rose-400">{cdnError}</p>}
+              {cdnError && <p data-testid="cdn-error" className="text-sm text-rose-600 dark:text-rose-400">{cdnError}</p>}
               <button
+                data-testid="cdn-submit"
                 type="submit"
                 disabled={uploading}
                 className="w-full rounded-md bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"

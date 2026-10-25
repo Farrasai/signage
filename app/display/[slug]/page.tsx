@@ -552,6 +552,7 @@ export default function DisplayPlayerPage() {
     <div className="relative h-screen w-screen overflow-hidden bg-black">
       {!fsActive && (
         <button
+          data-testid="fullscreen-button"
           onClick={enterFullscreen}
           className="absolute right-3 top-3 z-30 rounded-md border border-white/20 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur hover:bg-black/60"
         >
@@ -560,6 +561,7 @@ export default function DisplayPlayerPage() {
       )}
 
       <button
+        data-testid="unpair-button"
         onClick={unpair}
         className="absolute bottom-3 right-3 z-30 rounded-md border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] text-white/30 backdrop-blur hover:border-white/30 hover:text-white/60"
         title="Lepas pasangan layar ini dan kembali ke halaman pairing"
@@ -567,7 +569,7 @@ export default function DisplayPlayerPage() {
         ↺ Lepas pasangan
       </button>
 
-      <div className="absolute inset-0">
+      <div data-testid="player-stage" className="absolute inset-0">
         {!currentItem?.media ? (
           <WaitingScreen name={display.name} hasPlaylist={Boolean(activePlaylistId)} />
         ) : (
@@ -604,10 +606,10 @@ export default function DisplayPlayerPage() {
 
 function WaitingScreen({ name, hasPlaylist }: { name: string; hasPlaylist: boolean }) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#0a0c10] text-center">
+    <div data-testid="player-waiting-screen" className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#0a0c10] text-center">
       <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#ff6a3d]" />
-      <p className="text-xl font-medium text-white">{name}</p>
-      <p className="max-w-md text-sm text-white/50">
+      <p data-testid="player-display-name" className="text-xl font-medium text-white">{name}</p>
+      <p data-testid="player-waiting-message" className="max-w-md text-sm text-white/50">
         {hasPlaylist
           ? "Playlist ini belum memiliki konten. Tambahkan dari dashboard."
           : "Belum ada playlist yang diatur untuk layar ini. Atur dari dashboard."}

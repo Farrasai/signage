@@ -115,12 +115,13 @@ export default function EmergencyPage() {
   return (
     <div>
       {notice?.is_active && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3.5 dark:border-rose-900/50 dark:bg-rose-950/30">
+        <div data-testid="emergency-active-banner" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3.5 dark:border-rose-900/50 dark:bg-rose-950/30">
           <div className="flex items-center gap-2.5 text-sm font-medium text-rose-700 dark:text-rose-300">
             <span className="h-2 w-2 animate-pulse rounded-full bg-rose-600" />
             Sedang tayang di {activeTargetCount} layar sejak {formatDateTime(notice.published_at)}
           </div>
           <button
+            data-testid="emergency-close-button"
             onClick={handleClose}
             disabled={saving}
             className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
@@ -137,6 +138,7 @@ export default function EmergencyPage() {
               <div className="flex flex-wrap gap-2">{PRESETS.map((pr) => (<button key={pr.label} type="button" onClick={() => { setTitle(pr.title); setMessage(pr.message); }} className="cursor-pointer rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{pr.label}</button>))}</div>
               <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Judul</label>
             <input
+              data-testid="emergency-title-input"
               value={title}
               maxLength={120}
               onChange={(e) => {
@@ -152,6 +154,7 @@ export default function EmergencyPage() {
           <div>
             <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Pesan</label>
             <textarea
+              data-testid="emergency-message-input"
               value={message}
               maxLength={1000}
               onChange={(e) => {
@@ -169,6 +172,7 @@ export default function EmergencyPage() {
             <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Tayangkan ke</label>
             <div className="flex gap-1 rounded-lg bg-white dark:bg-slate-900 p-1">
               <button
+                data-testid="emergency-target-all"
                 type="button"
                 onClick={() => setTargetMode("all")}
                 className={`flex-1 rounded-lg py-1.5 text-sm ${
@@ -178,6 +182,7 @@ export default function EmergencyPage() {
                 Semua layar
               </button>
               <button
+                data-testid="emergency-target-specific"
                 type="button"
                 onClick={() => setTargetMode("specific")}
                 className={`flex-1 rounded-lg py-1.5 text-sm ${
@@ -203,6 +208,7 @@ export default function EmergencyPage() {
                     <span className="flex items-center gap-2.5">
                       <input
                         type="checkbox"
+                        data-testid={`emergency-target-${d.id}`}
                         checked={selectedIds.has(d.id)}
                         onChange={() => toggleDisplay(d.id)}
                         className="accent-emerald-600"
@@ -216,9 +222,10 @@ export default function EmergencyPage() {
             )}
           </div>
 
-          {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+          {error && <p data-testid="emergency-error" className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
 
           <button
+            data-testid="emergency-publish-button"
             type="submit"
             disabled={saving || loading}
             className="w-full cursor-pointer rounded-xl bg-rose-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-rose-600/25 hover:bg-rose-500 disabled:opacity-50"

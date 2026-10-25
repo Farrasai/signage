@@ -118,7 +118,7 @@ export default function OverviewPage() {
         </div>
       </div>
       {!loading && displays.length===0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+        <div data-testid="dashboard-empty" className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <p className="text-sm text-slate-500">Belum ada layar terdaftar.</p>
           <Link href="/dashboard/displays" className="bg-emerald-600 hover:bg-emerald-700 mt-3 inline-block cursor-pointer rounded-xl px-4 py-2 text-sm font-bold text-white shadow">+ Tambah layar pertama</Link>
         </div>
@@ -130,7 +130,7 @@ export default function OverviewPage() {
         {filtered.map((d)=>{
           const online=isOnline(d.last_seen);
           return (
-            <div key={d.id} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div key={d.id} data-testid={`display-card-${d.id}`} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className={`relative h-36 overflow-hidden ${online?"emerald-wave-pattern":"emerald-wave-offline"}`}>
                 <span className="absolute left-3 top-3 rounded-md bg-black/35 px-2 py-1 font-mono text-[11px] font-bold tracking-wide text-lime-200">{d.slug}</span>
                 <span className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${online?"bg-white text-emerald-700":"bg-slate-700 text-slate-200"}`}>● {online?"Online":"Offline"}</span>
@@ -142,15 +142,15 @@ export default function OverviewPage() {
               <div className="space-y-3 p-4">
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Playlist Aktif:</span>
-                  <select value={d.default_playlist_id??""} onChange={(e)=>changePlaylist(d.id, e.target.value)} className="max-w-[62%] cursor-pointer rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                  <select data-testid={`display-playlist-select-${d.id}`} value={d.default_playlist_id??""} onChange={(e)=>changePlaylist(d.id, e.target.value)} className="max-w-[62%] cursor-pointer rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                     <option value="">Belum diatur</option>
                     {playlists.map((p)=>(<option key={p.id} value={p.id}>{p.name}</option>))}
                   </select>
                 </div>
                 <RemoteControls displayId={d.id} isPaused={d.is_paused} />
                 <div className="grid grid-cols-2 gap-2.5 pt-1">
-                  <button onClick={()=>copyUrl(d.slug, d.id)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">{copiedId===d.id?"Tersalin!":"Salin URL"}</button>
-                  <a href={`/display/${d.slug}`} target="_blank" rel="noreferrer" className="bg-emerald-600 hover:bg-emerald-700 inline-flex cursor-pointer items-center justify-center rounded-xl px-3 py-2.5 text-xs font-bold text-white shadow">Buka Player ↗</a>
+                  <button data-testid={`copy-url-button-${d.id}`} onClick={()=>copyUrl(d.slug, d.id)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">{copiedId===d.id?"Tersalin!":"Salin URL"}</button>
+                  <a data-testid={`open-player-link-${d.id}`} href={`/display/${d.slug}`} target="_blank" rel="noreferrer" className="bg-emerald-600 hover:bg-emerald-700 inline-flex cursor-pointer items-center justify-center rounded-xl px-3 py-2.5 text-xs font-bold text-white shadow">Buka Player ↗</a>
                 </div>
               </div>
             </div>

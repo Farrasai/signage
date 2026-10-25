@@ -93,6 +93,7 @@ export default function DisplayPairingPage() {
       <form onSubmit={handleSubmit} className="mt-8 w-full max-w-xs">
         <input
           autoFocus
+          data-testid="pairing-code-input"
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8))}
           type="text"
@@ -105,14 +106,15 @@ export default function DisplayPairingPage() {
           className="w-full rounded-xl border-2 border-white/15 bg-white/5 px-4 py-4 text-center font-mono text-3xl tracking-[0.4em] text-white outline-none focus:border-emerald-500"
         />
 
-        {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
+        {error && <p data-testid="pairing-error" className="mt-3 text-sm text-rose-400">{error}</p>}
         {pairedName && !error && (
-          <p className="mt-3 text-sm text-emerald-400">
+          <p data-testid="pairing-success" className="mt-3 text-sm text-emerald-400">
             Berhasil dipasangkan ke &ldquo;{pairedName}&rdquo;, memuat layar...
           </p>
         )}
 
         <button
+          data-testid="pairing-submit"
           type="submit"
           disabled={submitting || code.length < 6}
           className="mt-4 w-full rounded-lg bg-white px-4 py-3.5 text-base font-semibold text-gray-900 hover:opacity-90 disabled:opacity-40"

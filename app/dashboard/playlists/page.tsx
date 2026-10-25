@@ -71,7 +71,7 @@ export default function PlaylistsPage() {
       <div className="mb-5 flex justify-end"><button onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95">+ Buat playlist</button></div>
 
       {!loading && playlists.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
+        <div data-testid="playlists-empty" className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400">
           Belum ada playlist. Buat satu untuk mulai menyusun konten.
         </div>
       )}
@@ -111,6 +111,7 @@ export default function PlaylistsPage() {
               <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Nama playlist</label>
               <input
                 autoFocus
+                data-testid="playlist-name-input"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Contoh: Promo Bulan Ini"
@@ -119,6 +120,7 @@ export default function PlaylistsPage() {
             </div>
             <button
               type="submit"
+              data-testid="playlist-submit"
               disabled={saving}
               className="bg-emerald-600 hover:bg-emerald-700 w-full cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow hover:opacity-95 disabled:opacity-50"
             >

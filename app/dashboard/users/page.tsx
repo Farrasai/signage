@@ -42,8 +42,8 @@ export default function UsersPage() {
   }
   return (
     <div>
-      <div className="mb-5 flex justify-end"><button onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow">+ Buat Operator</button></div>
-      {error && <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</p>}
+      <div className="mb-5 flex justify-end"><button data-testid="add-user-button" onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow">+ Buat Operator</button></div>
+      {error && <p data-testid="user-form-error" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</p>}
       {loading ? <p className="text-sm text-slate-500">Memuat...</p> : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <div className="overflow-x-auto"><table className="min-w-[640px] w-full text-left text-sm">
@@ -66,13 +66,13 @@ export default function UsersPage() {
       )}
       {showAdd && (
         <Modal title="Buat Operator Bidang" onClose={() => setShowAdd(false)}>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" className="w-full rounded-xl border px-3 py-2" />
-            <input type="text" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password min 6" className="w-full rounded-xl border px-3 py-2" />
-            <select value={bidang} onChange={(e) => setBidang(e.target.value)} className="w-full rounded-xl border px-3 py-2">
+          <form onSubmit={handleCreate} className="space-y-4" noValidate>
+            <input data-testid="user-email-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" className="w-full rounded-xl border px-3 py-2" />
+            <input data-testid="user-password-input" type="text" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password min 6" className="w-full rounded-xl border px-3 py-2" />
+            <select data-testid="user-bidang-select" value={bidang} onChange={(e) => setBidang(e.target.value)} className="w-full rounded-xl border px-3 py-2">
               {BIDANG_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
             </select>
-            <button type="submit" disabled={saving} className="w-full bg-emerald-600 text-white rounded-xl py-2 font-bold">{saving ? "Membuat..." : "Buat Operator"}</button>
+            <button data-testid="user-submit" type="submit" disabled={saving} className="w-full bg-emerald-600 text-white rounded-xl py-2 font-bold">{saving ? "Membuat..." : "Buat Operator"}</button>
           </form>
         </Modal>
       )}
