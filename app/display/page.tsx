@@ -12,6 +12,8 @@ export default function DisplayPairingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pairedName, setPairedName] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
 
   // Sudah pernah dipasangkan sebelumnya di browser ini? Langsung lanjut,
   // tidak perlu ketik kode lagi.
@@ -29,8 +31,13 @@ export default function DisplayPairingPage() {
     e.preventDefault();
     setError(null);
 
-    const trimmed = code.trim();
-    if (trimmed.length < 4) {
+    if (lockedUntil && Date.now() < lockedUntil) {
+      setError("Terlalu banyak percobaan gagal. Silakan tunggu sebentar.");
+      return;
+    }
+
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed.length < 6) {
       setError("Masukkan kode pairing yang diberikan admin.");
       return;
     }
@@ -43,18 +50,27 @@ export default function DisplayPairingPage() {
     setSubmitting(false);
 
     if (rpcError) {
-      console.error("Gagal menukar kode pairing:", rpcError);
+      console.error("Gagal menukar kode pairing");
       setError("Terjadi kesalahan saat menghubungi server. Coba lagi.");
       return;
     }
 
     const row = (Array.isArray(data) ? data[0] : null) as { slug: string; name: string } | null;
     if (!row?.slug) {
-      setError("Kode salah atau sudah kedaluwarsa. Minta kode baru dari admin.");
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      if (nextAttempts >= 5) {
+        setLockedUntil(Date.now() + 60_000);
+        setError("Terlalu banyak percobaan gagal. Coba lagi dalam 1 menit.");
+      } else {
+        setError("Kode salah atau sudah kedaluwarsa. Minta kode baru dari admin.");
+      }
       setCode("");
       return;
     }
 
+    setAttempts(0);
+    setLockedUntil(null);
     window.localStorage.setItem(PAIRING_STORAGE_KEY, row.slug);
     setPairedName(row.name);
     router.replace(`/display/${row.slug}`);
@@ -78,11 +94,14 @@ export default function DisplayPairingPage() {
         <input
           autoFocus
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-          type="tel"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          placeholder="482913"
+          onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8))}
+          type="text"
+          inputMode="text"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          placeholder="AB3D9E2K"
           className="w-full rounded-xl border-2 border-white/15 bg-white/5 px-4 py-4 text-center font-mono text-3xl tracking-[0.4em] text-white outline-none focus:border-emerald-500"
         />
 
@@ -95,7 +114,7 @@ export default function DisplayPairingPage() {
 
         <button
           type="submit"
-          disabled={submitting || code.length < 4}
+          disabled={submitting || code.length < 6}
           className="mt-4 w-full rounded-lg bg-white px-4 py-3.5 text-base font-semibold text-gray-900 hover:opacity-90 disabled:opacity-40"
         >
           {submitting ? "Memeriksa..." : "Pasang Layar"}
@@ -105,6 +124,11 @@ export default function DisplayPairingPage() {
       <p className="mt-10 max-w-xs text-xs text-white/30">
         Belum punya kode? Tanya Admin
       </p>
+      {lockedUntil && Date.now() < lockedUntil && (
+        <p className="mt-2 text-xs text-rose-400">
+          Terkunci sementara karena terlalu banyak percobaan.
+        </p>
+      )}
     </div>
   );
 }

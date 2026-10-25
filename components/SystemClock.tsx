@@ -26,8 +26,8 @@ export default function SystemClock() {
           const roundtrip = Date.now() - clientSent;
           setServerOffsetMs(serverTime - (clientSent + roundtrip / 2));
         }
-      } catch (e) {
-        console.warn("Gagal sinkronisasi waktu server", e);
+      } catch {
+        console.warn("Gagal sinkronisasi waktu server");
       }
     };
 

@@ -1,16 +1,31 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
 export default function SignOutButton() {
-  const router = useRouter();
-
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+    try {
+      const res = await fetch("/api/auth/signout", { method: "POST" });
+      if (!res.ok) {
+        console.error("Gagal keluar");
+      }
+    } catch {
+      console.error("Gagal menghubungi server saat keluar");
+    } finally {
+      // Bersihkan cookie lokal Supabase jika ada
+      try {
+        document.cookie.split(";").forEach((cookie) => {
+          const [name] = cookie.split("=");
+          const trimmedName = name?.trim();
+          if (trimmedName && (trimmedName.startsWith("sb-") || trimmedName.includes("auth"))) {
+            document.cookie = `${trimmedName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict`;
+            document.cookie = `${trimmedName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict; secure`;
+          }
+        });
+      } catch {
+        // ignore
+      }
+      // Hard navigation agar middleware/proxy membaca ulang state tanpa cookie auth
+      window.location.replace("/login");
+    }
   }
 
   return (

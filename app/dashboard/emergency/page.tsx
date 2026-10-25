@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Display, EmergencyNotice } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
+import { sanitizeText } from "@/lib/sanitize";
 import StatusDot from "@/components/StatusDot";
 import EmergencyOverlay from "@/components/EmergencyOverlay";
 
@@ -22,6 +23,7 @@ export default function EmergencyPage() {
 
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [message, setMessage] = useState("");
+  const [charCount, setCharCount] = useState({ title: DEFAULT_TITLE.length, message: 0 });
   const [targetMode, setTargetMode] = useState<"all" | "specific">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -79,11 +81,13 @@ export default function EmergencyPage() {
     setSaving(true);
     const supabase = createClient();
     const targetIds = targetMode === "all" ? [] : Array.from(selectedIds);
+    const safeTitle = sanitizeText(title.trim() || DEFAULT_TITLE).slice(0, 120);
+    const safeMessage = sanitizeText(message.trim()).slice(0, 1000);
     await supabase
       .from("emergency_notice")
       .update({
-        title: title.trim() || DEFAULT_TITLE,
-        message: message.trim(),
+        title: safeTitle,
+        message: safeMessage,
         target_display_ids: targetIds,
         is_active: true,
         published_at: new Date().toISOString(),
@@ -134,21 +138,31 @@ export default function EmergencyPage() {
               <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Judul</label>
             <input
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              maxLength={120}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setCharCount((c) => ({ ...c, title: e.target.value.length }));
+              }}
               placeholder={DEFAULT_TITLE}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
+            <p className="mt-1 text-xs text-slate-400">{charCount.title}/120 karakter</p>
           </div>
 
           <div>
             <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Pesan</label>
             <textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              maxLength={1000}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                setCharCount((c) => ({ ...c, message: e.target.value.length }));
+              }}
               rows={4}
               placeholder="Contoh: Sistem Sinkronisasi Pusat Sedang Dalam Pemeliharaan Berkala Selama 15 Menit. Pelayanan Manual Tetap Berjalan."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
+            <p className="mt-1 text-xs text-slate-400">{charCount.message}/1000 karakter</p>
           </div>
 
           <div>

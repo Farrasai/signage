@@ -1,4 +1,5 @@
 ﻿import type { TableContent } from "@/lib/types";
+import { sanitizeText } from "@/lib/sanitize";
 
 /** Ukuran font & padding otomatis menyesuaikan jumlah baris agar tetap terbaca dari jarak jauh. */
 function sizingFor(rowCount: number) {
@@ -15,7 +16,7 @@ export default function AgendaTable({ title, columns, rows }: TableContent) {
     <div className="flex h-full w-full flex-col bg-[#0a0c10] px-8 py-8 sm:px-16 sm:py-12">
       {title && (
         <h1 className="mb-6 shrink-0 text-3xl font-semibold text-white sm:text-5xl">
-          {title}
+          {sanitizeText(title)}
         </h1>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10">
@@ -28,7 +29,7 @@ export default function AgendaTable({ title, columns, rows }: TableContent) {
                   className="sticky top-0 border-b border-white/10 bg-[#ff6a3d]/15 text-left font-semibold text-[#ff6a3d]"
                   style={{ padding: pad }}
                 >
-                  {col}
+                  {sanitizeText(col)}
                 </th>
               ))}
             </tr>
@@ -42,7 +43,7 @@ export default function AgendaTable({ title, columns, rows }: TableContent) {
                     className="border-b border-white/5 align-top text-white/90"
                     style={{ padding: pad }}
                   >
-                    {row[ci] ?? ""}
+                    {sanitizeText(row[ci] ?? "")}
                   </td>
                 ))}
               </tr>

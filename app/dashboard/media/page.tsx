@@ -12,6 +12,7 @@ import {
   parseDelimitedText,
   parseYouTubeUrl,
 } from "@/lib/utils";
+import { sanitizeText } from "@/lib/sanitize";
 import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
 import { useMemo } from "react";
@@ -277,7 +278,7 @@ export default function MediaPage() {
     e.preventDefault();
     setTableError(null);
 
-    const cleanColumns = tableColumns.map((c) => c.trim()).filter(Boolean);
+    const cleanColumns = tableColumns.map((c) => sanitizeText(c.trim())).filter(Boolean);
     if (cleanColumns.length === 0) {
       setTableError("Tambahkan minimal satu kolom.");
       return;
@@ -289,13 +290,14 @@ export default function MediaPage() {
 
     setUploading(true);
     const supabase = createClient();
-    const title = tableTitle.trim() || "Tabel";
+    const safeTitle = sanitizeText(tableTitle.trim() || "Tabel").slice(0, 100);
+    const safeRows = tableRows.map((row) => row.map((cell) => sanitizeText(cell)));
     await supabase.from("media").insert({
-      name: title,
+      name: safeTitle,
       type: "table",
       url: "",
       duration: tableDuration,
-      content: { title, columns: cleanColumns, rows: tableRows },
+      content: { title: safeTitle, columns: cleanColumns, rows: safeRows },
     });
     setUploading(false);
     setTableTitle("Agenda Kegiatan");

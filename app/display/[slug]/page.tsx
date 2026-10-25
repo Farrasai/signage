@@ -57,14 +57,14 @@ export default function DisplayPlayerPage() {
           const roundtrip = Date.now() - clientSent;
           setServerOffsetMs(serverTime - (clientSent + roundtrip / 2));
         }
-      } catch (e) {
-        console.warn("Gagal sinkronisasi waktu server", e);
+      } catch {
+        console.warn("Gagal sinkronisasi waktu server");
       }
 
       const { data, error } = await supabase.from("displays").select("*").eq("slug", slug).maybeSingle();
       if (cancelled) return;
       if (error) {
-        console.error("Gagal memuat data layar dari Supabase:", error);
+        console.error("Gagal memuat data layar dari Supabase");
       }
       if (!data) {
         setNotFound(true);
@@ -418,8 +418,8 @@ export default function DisplayPlayerPage() {
     }
 
     audio.addEventListener("ended", onEnded);
-    audio.play().catch((err) => {
-      console.warn("Autoplay audio tertahan browser (perlu klik/gesture di layar TV terlebih dahulu):", err);
+    audio.play().catch(() => {
+      console.warn("Autoplay audio tertahan browser (perlu klik/gesture di layar TV terlebih dahulu)");
       // Agar antrean tidak macet jika autoplay diblokir browser:
       setTimeout(() => {
         finishItem();

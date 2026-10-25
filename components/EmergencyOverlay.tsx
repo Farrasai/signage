@@ -1,4 +1,5 @@
 ﻿import { formatDateTime } from "@/lib/utils";
+import { sanitizeText } from "@/lib/sanitize";
 
 export default function EmergencyOverlay({
   title,
@@ -21,12 +22,12 @@ export default function EmergencyOverlay({
         </span>
 
         <h2 className="mt-4 text-xl font-bold uppercase leading-snug text-white sm:text-3xl">
-          {title}
+          {sanitizeText(title)}
         </h2>
 
         {message && (
           <div className="mt-5 rounded-lg bg-white/5 px-5 py-4">
-            <p className="text-sm leading-relaxed text-white/90 sm:text-base">{message}</p>
+            <p className="text-sm leading-relaxed text-white/90 sm:text-base">{sanitizeText(message)}</p>
           </div>
         )}
 

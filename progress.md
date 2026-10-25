@@ -205,6 +205,54 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ---
 
+### [2026-10-07] Multi-Role — Administrator vs Operator Bidang (7 Bidang)
+
+- **Status:** ✅ Selesai (migrasi + RLS + UI guard + build hijau 14 routes)
+- **Peran:** `admin` (akses penuh) vs `operator_bidang` (TU / INTEL / BIN / PIDSUS / PIDUM / DATUN / PAPBB). Bidang disimpan di `profiles.bidang` + di `displays.bidang`/`playlists.bidang` untuk isolasi. Akun lama di-backfill → `admin`.
+- **File diubah / dibuat:**
+  - `lib/types.ts`: `Role`, `Bidang`, `BIDANG_OPTIONS`, `Profile`, `Display.owner_id/bidang`, `Playlist.owner_id/bidang`, `Media.owner_id`, `Schedule.owner_id`.
+  - `lib/auth.ts`: helper `isAdmin`, `isOperator`, `canEditDisplay`, `canEditOwner`, `canAccessAnnouncer/Emergency/Users`.
+  - `supabase/migrations/20261006_multirole.sql`: tabel `profiles`, kolom `owner_id`/`bidang`, fungsi `is_admin()` & `my_bidang()` (`security definer`), RLS (Displays/Playlists SELECT all, UPDATE/DELETE owner/bidang/admin; Media/Schedules owner/admin; Announcer/Emergency/RemoteCommands admin only), index, trigger `handle_new_user()`, backfill admin.
+  - `supabase/fix_profiles_rls.sql`: perbaiki rekursi RLS `profiles` → `is_admin()` security definer.
+  - `proxy.ts` + `app/dashboard/layout.tsx`: role guard (anon → /login, operator blok `/dashboard/users`/`/announcer`/`/emergency`).
+  - `components/DashboardShell.tsx` / `Sidebar.tsx`: sembunyikan Kontrol Siaran untuk operator, badge `Operator — BIDANG`, link Manajemen User hanya admin.
+  - `app/dashboard/users` + `app/api/admin/*`: CRUD user via `service_role` (create auth user + profiles), pagination 10.
+  - `app/dashboard/displays/media/playlists/schedules`: view all, edit/delete hanya owner/bidang/admin, auto set `owner_id/bidang` saat insert.
+- **Build:** ✅ 14 routes
+
+---
+
+### [2026-10-07] Redesign UI/UX — Accessibility, Layout & Pagination
+
+- **Status:** ✅ Selesai
+- **Latar:** Gradient tidak aksesibel, kontras light/dark, card transparan, overflow `min-h-screen + overflow-hidden`, double title, scroll clipping, viewport lock.
+- **File diubah / dibuat:**
+  - `app/globals.css`: `@custom-variant dark`, migrasi token `bg-surface/border-border/text-text/bg-signal` → `bg-white dark:bg-slate-900` dkk.
+  - `app/layout.tsx`: `html/body height:100%` → `min-height`, viewport lock.
+  - `components/DashboardShell.tsx`: hapus `overflow-hidden` pada flex/`min-h-screen`.
+  - `components/Sidebar.tsx`: fix `dark:hover:bg-slate-700 dark:hover:text-white` untuk Manajemen User.
+  - `components/Pagination.tsx`: komponen baru numbered (Media 24, Users/Schedules/Playlists/Announcer 10, Displays all); di luar `overflow-hidden rounded-2xl > overflow-x-auto` agar tidak ter-clipping.
+  - `components/PageHeader.tsx`: Shell sticky header jadi single source (Opsi A); 6 halaman hapus `<header><h1>` ganda.
+  - CTA `emerald-wave-pattern` → solid `bg-emerald-600 hover:bg-emerald-700 font-bold` (WCAG AA 4.63:1); `KpiCard` gradient dipertahankan; `ThemeToggle` tetap ada.
+- **Build:** ✅ Lint ✅
+
+---
+
+### [2026-10-07] Announcer Audio Storage Ownership — Anti-Hapus Master (Opsi C)
+
+- **Status:** ✅ Selesai (build hijau; migrasi siap eksekusi di Supabase Dashboard)
+- **Root cause:** `announcer_queue.audio_url` share file dengan `announcements.audio_url`. `handleCancelQueueItem` (dan `handleSaveSchedule` yang hapus lama sebelum DB sukses + parsing `split("/announcer")` rapuh) menghapus storage → master jadi 404.
+- **File diubah / dibuat:**
+  - `supabase/migrations/20261007_announcer_ownership.sql`: `announcements.storage_path`, `announcer_queue.storage_path + source_announcement_id FK ON DELETE SET NULL + idx` + backfill `split_part(audio_url,'/announcer/',2)`.
+  - `supabase/schema.sql`: sinkron instalasi baru (storage_path + source_announcement_id + idx).
+  - `lib/types.ts`: `Announcement.storage_path`, `AnnouncerItem.storage_path + source_announcement_id`.
+  - `app/dashboard/announcer/page.tsx`: helper `getStoragePath(raw)` robust, `handleTriggerNow` insert `storage_path+source_announcement_id`, `handleSaveSchedule` trash-safe (upload baru → `getPublicUrl` → DB sukses baru `remove(old)` else `remove(new)`), `handleDeleteSchedule`/`handleBroadcastSubmit` pakai `storage_path ?? getStoragePath`, `handleCancelQueueItem` guard ownership (`source != null` → hanya `delete row`).
+  - `app/display/[slug]/page.tsx`: item jadwal `sched-…` → `storage_path + source_announcement_id`; player hanya geser antrean, tidak `storage.remove`.
+- **Manual 1x:** Jalankan `20261006_multirole.sql` → `20261007_announcer_ownership.sql` → `fix_profiles_rls.sql` di SQL Editor; verifikasi `select email,role,bidang from profiles`.
+- **Build:** ✅ 14 routes
+
+---
+
 ## 🗂️ Struktur Proyek (Snapshot Awal)
 
 ```
@@ -246,12 +294,18 @@ signage/
 │   └── utils.ts                   # Utility functions
 ├── supabase/
 │   ├── migrations/
-│   │   ├── 20261004_announcer.sql     # Migrasi antrean pengumuman bersuara
-│   │   └── 20261005_announcements.sql # Migrasi master jadwal pengumuman
-│   └── schema.sql                     # Skema DB lengkap (referensi instalasi baru)
-├── proxy.ts                           # Middleware auth (Next.js 16)
-├── AGENTS.md                          # Aturan wajib untuk coding agent
-└── progress.md                        # File ini
+│   │   ├── 20261004_announcer.sql           # Migrasi antrean pengumuman bersuara
+│   │   ├── 20261005_announcements.sql       # Migrasi master jadwal pengumuman
+│   │   ├── 20261006_multirole.sql           # Migrasi multi-role (profiles, owner/bidang, RLS)
+│   │   └── 20261007_announcer_ownership.sql # Migrasi ownership audio announcer (storage_path + source)
+│   ├── fix_profiles_rls.sql                 # Fix rekursi RLS profiles (is_admin definer)
+│   └── schema.sql                           # Skema DB lengkap (referensi instalasi baru)
+├── lib/
+│   ├── auth.ts                              # Helper role/bidang & guard
+│   └── types.ts                             # Role/Bidang/Profile/Display/Playlist + Announcer ownership
+├── proxy.ts                                 # Middleware auth (Next.js 16)
+├── AGENTS.md                                # Aturan wajib untuk coding agent
+└── progress.md                              # File ini
 ```
 
 ---
@@ -269,4 +323,34 @@ signage/
 
 ---
 
-_Terakhir diperbarui: 2026-10-06_
+### [2026-10-08] Security Hardening — Pre-Launch Audit Fixes
+
+- **Status:** ✅ Selesai (build hijau, npm audit 0 vulnerabilities)
+- **Tujuan:** Menutup celah keamanan kritis dan tinggi hasil audit pre-launch sebelum deploy produksi.
+- **File diubah / dibuat:**
+  - `package.json` + `package-lock.json`: Upgrade `next` → `^16.4.3`, `react` → `^19.3.1`, `react-dom` → `^19.3.1`. `npm audit fix --force` menghapun semua vulnerabilitas (`sharp`, `source-map-js`, `zod`).
+  - `lib/rate-limit.ts` (baru): Rate limiter sederhana berbasis `lru-cache` untuk API routes.
+  - `lib/sanitize.ts` (baru): Helper sanitasi XSS menggunakan `isomorphic-dompurify` (`sanitizeText`, `sanitizeYouTubeId`, `sanitizeUrl`).
+  - `next.config.ts`: Menambahkan security headers global — `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, dan `Strict-Transport-Security` (production).
+  - `lib/supabase/server.ts`, `lib/supabase/client.ts`, `proxy.ts`: Cookie session flags `httpOnly`, `sameSite: "strict"`, `secure` di production, `maxAge` 7 hari, `path: "/"`. Security headers dasar juga di-set di `proxy.ts`.
+  - `app/api/admin/create-user/route.ts`, `app/api/admin/users/route.ts`, `app/api/admin/users/[id]/route.ts`, `app/api/time/route.ts`: Rate limiting per IP; error message generik ke client; detail error hanya di server log.
+  - `app/login/page.tsx`: Client-side brute-force lockout — 5x gagal → blokir 1 menit.
+  - `app/display/page.tsx`: Pairing code lockout — 5x salah → blokir 1 menit; input menerima 8 karakter alfanumerik.
+  - `lib/utils.ts`: `generatePairingCode()` diganti dari 6 digit `Math.random()` menjadi 8 karakter alfanumerik dengan `crypto.getRandomValues()`; `generateSlug()` menggunakan `crypto.randomUUID()`; `parseYouTubeUrl()` membatasi domain allowlist; `youtubeEmbedUrl()` dan `playerUrlFor()` menggunakan `encodeURIComponent`.
+  - `components/AgendaTable.tsx`, `components/EmergencyOverlay.tsx`: Output teks (title, message, columns, rows) disanitasi dengan `sanitizeText`.
+  - `app/dashboard/emergency/page.tsx`: Input title & message dibatasi (120 / 1000 karakter) dan disanitasi sebelum disimpan.
+  - `app/dashboard/media/page.tsx`, `components/EditMediaModal.tsx`: Tabel konten (title, columns, rows) disanitasi sebelum insert/update.
+  - `app/dashboard/announcer/page.tsx`: Label schedule & broadcast disanitasi dan dibatasi 100 karakter.
+  - `components/SlideStage.tsx`: YouTube iframe ditambahkan `sandbox="allow-scripts allow-same-origin allow-presentation"` dan `loading="lazy"`.
+  - `app/display/[slug]/page.tsx`, `components/SystemClock.tsx`, `components/SlideStage.tsx`: `console.error`/`console.warn` tidak lagi menampilkan objek error lengkap ke browser.
+  - `components/SignOutButton.tsx`: Logout sekarang memanggil API route `POST /api/auth/signout` (server-side signOut) + hard navigation ke `/login`.
+  - `app/api/auth/signout/route.ts` (baru): API route server-side untuk menghapus session Supabase secara tepat.
+- **Catatan teknis:**
+  - Cookie name custom `sb-session` dihapus karena menyebabkan mismatch antara browser client dan server/middleware, yang membuat login stuck setelah perubahan cookie flags.
+  - Logout yang awalnya tidak berfungsi disebabkan oleh client-side `supabase.auth.signOut()` tidak memicu penghapusan cookie di server; solusi dengan dedicated API route + hard navigation.
+  - `npm audit` setelah fix: **0 vulnerabilities**.
+- **Build:** ✅ 15 routes
+
+---
+
+_Terakhir diperbarui: 2026-10-08_

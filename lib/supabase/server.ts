@@ -8,6 +8,13 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
     {
+      cookieOptions: {
+        path: "/",
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 60 * 60 * 24 * 7, // 7 hari
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -15,7 +22,13 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                sameSite: "strict",
+                secure: process.env.NODE_ENV === "production",
+                httpOnly: true,
+                path: "/",
+              })
             );
           } catch {
             // Dipanggil dari Server Component — boleh diabaikan,

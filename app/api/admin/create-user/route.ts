@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import rateLimit from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const ALLOWED_BIDANG = ["TU", "INTEL", "BIN", "PIDSUS", "PIDUM", "DATUN", "PAPBB"] as const;
 
+const limiter = rateLimit({ interval: 60_000 });
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return "unknown";
+}
+
 export async function POST(req: Request) {
+  try {
+    await limiter.check(5, `create-user:${getClientIp(req)}`);
+  } catch {
+    return NextResponse.json({ error: "Terlalu banyak permintaan. Coba lagi nanti." }, { status: 429 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -35,7 +50,8 @@ export async function POST(req: Request) {
       profileRole = (profile as { role?: string } | null)?.role ?? null;
       isAdminUser = profileRole === "admin";
     }
-  } catch {
+  } catch (err) {
+    console.error("Admin check error", err);
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
     profileRole = (profile as { role?: string } | null)?.role ?? null;
     isAdminUser = profileRole === "admin";
@@ -77,7 +93,8 @@ export async function POST(req: Request) {
   });
 
   if (createError) {
-    return NextResponse.json({ error: createError.message }, { status: 400 });
+    console.error("Create user error", createError);
+    return NextResponse.json({ error: "Gagal membuat user." }, { status: 400 });
   }
   const newId = created.user?.id;
   if (!newId) return NextResponse.json({ error: "Gagal mendapatkan ID user baru." }, { status: 500 });
@@ -91,7 +108,8 @@ export async function POST(req: Request) {
   }, { onConflict: "id" });
 
   if (profError) {
-    return NextResponse.json({ error: `User dibuat tapi gagal set profile: ${profError.message}` }, { status: 500 });
+    console.error("Profile insert error", profError);
+    return NextResponse.json({ error: "User dibuat tapi gagal set profile." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, id: newId });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Announcement, AnnouncerItem, DayOfWeek, Display } from "@/lib/types";
 import { DAYS } from "@/lib/types";
+import { sanitizeText } from "@/lib/sanitize";
 import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
 import StatusDot from "@/components/StatusDot";
@@ -269,7 +270,7 @@ export default function AnnouncerPage() {
     }
 
     const payload: Record<string, unknown> = {
-      label: schedLabel.trim(),
+      label: sanitizeText(schedLabel.trim()).slice(0, 100),
       audio_url: audioUrl,
       storage_path: newStoragePath,
       time: schedTime,
@@ -366,7 +367,7 @@ export default function AnnouncerPage() {
 
     const { data: pub } = supabase.storage.from("announcer").getPublicUrl(path);
     await supabase.from("announcer_queue").insert({
-      label: broadcastLabel.trim() || "Pengumuman",
+      label: sanitizeText(broadcastLabel.trim() || "Pengumuman").slice(0, 100),
       audio_url: pub.publicUrl,
       storage_path: path,
       source_announcement_id: null,

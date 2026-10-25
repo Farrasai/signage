@@ -204,8 +204,8 @@ function SlideLayer({
               const v = e.target as HTMLVideoElement;
               // Ignore pauses at the very end
               if (v.currentTime >= v.duration - 0.5) return;
-              v.play().catch((err) => {
-                console.warn("Decoder crashed or focus locked. Skipping video.", err);
+              v.play().catch(() => {
+                console.warn("Decoder crashed or focus locked. Skipping video.");
                 onVideoEnded();
               });
             }
@@ -227,8 +227,10 @@ function SlideLayer({
           )}
           className="h-full w-full"
           allow="autoplay; encrypted-media; fullscreen"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
           frameBorder={0}
           onLoad={onReady}
+          loading="lazy"
         />
       )}
     </div>

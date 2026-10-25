@@ -4,16 +4,27 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 60_000;
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (lockedUntil && Date.now() < lockedUntil) {
+      setError("Terlalu banyak percobaan gagal. Silakan tunggu sebentar.");
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
@@ -22,10 +33,19 @@ export default function LoginPage() {
     setLoading(false);
 
     if (error) {
-      setError("Email atau password salah.");
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      if (nextAttempts >= MAX_ATTEMPTS) {
+        setLockedUntil(Date.now() + LOCKOUT_MS);
+        setError("Terlalu banyak percobaan gagal. Coba lagi dalam 1 menit.");
+      } else {
+        setError("Email atau password salah.");
+      }
       return;
     }
 
+    setAttempts(0);
+    setLockedUntil(null);
     router.replace("/dashboard");
     router.refresh();
   }

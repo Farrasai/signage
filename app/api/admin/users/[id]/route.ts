@@ -1,10 +1,25 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import rateLimit from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
+const limiter = rateLimit({ interval: 60_000 });
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return "unknown";
+}
+
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await limiter.check(10, `delete-user:${getClientIp(_req)}`);
+  } catch {
+    return NextResponse.json({ error: "Terlalu banyak permintaan. Coba lagi nanti." }, { status: 429 });
+  }
+
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,7 +37,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   }
   const admin = createAdminClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { error: delAuth } = await admin.auth.admin.deleteUser(id);
-  if (delAuth) return NextResponse.json({ error: delAuth.message }, { status: 400 });
+  if (delAuth) {
+    console.error("Delete user error", delAuth);
+    return NextResponse.json({ error: "Gagal menghapus user." }, { status: 400 });
+  }
   // profile will cascade delete
   return NextResponse.json({ ok: true });
 }

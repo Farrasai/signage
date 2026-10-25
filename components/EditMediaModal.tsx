@@ -10,6 +10,7 @@ import {
   parseDelimitedText,
   parseYouTubeUrl,
 } from "@/lib/utils";
+import { sanitizeText } from "@/lib/sanitize";
 import Modal from "./Modal";
 
 export default function EditMediaModal({
@@ -112,10 +113,11 @@ export default function EditMediaModal({
         setSaving(false);
         return;
       }
-      const title = tableTitle.trim() || "Tabel";
+      const safeTitle = sanitizeText(tableTitle.trim() || "Tabel").slice(0, 100);
+      const safeRows = tableRows.map((row) => row.map((cell) => sanitizeText(cell)));
       await supabase
         .from("media")
-        .update({ name: title, duration, content: { title, columns: cleanColumns, rows: tableRows } })
+        .update({ name: safeTitle, duration, content: { title: safeTitle, columns: cleanColumns, rows: safeRows } })
         .eq("id", item.id);
     } else if (isYoutube) {
       const parsed = parseYouTubeUrl(ytUrl);

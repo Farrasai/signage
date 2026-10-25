@@ -1,13 +1,33 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const isProd = process.env.NODE_ENV === "production";
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // Cookie defaults for CSRF/session protection
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (isProd) {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload"
+    );
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
     {
+      cookieOptions: {
+        path: "/",
+        sameSite: "strict",
+        secure: isProd,
+        httpOnly: true,
+        maxAge: 60 * 60 * 24 * 7,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -16,7 +36,13 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, {
+              ...options,
+              sameSite: "strict",
+              secure: isProd,
+              httpOnly: true,
+              path: "/",
+            })
           );
         },
       },
@@ -64,3 +90,4 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/dashboard/:path*", "/login"],
 };
+

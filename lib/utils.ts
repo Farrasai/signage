@@ -9,7 +9,7 @@ export function generateSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 40);
-  const suffix = Math.random().toString(36).slice(2, 8);
+  const suffix = crypto.randomUUID().slice(0, 6);
   return `${base || "tv"}-${suffix}`;
 }
 
@@ -33,10 +33,13 @@ export function parseYouTubeUrl(input: string): ParsedYouTube | null {
 
   try {
     const url = new URL(trimmed);
+    const allowedHosts = ["youtube.com", "www.youtube.com", "youtu.be", "m.youtube.com", "music.youtube.com"];
+    if (!allowedHosts.includes(url.hostname.toLowerCase())) return null;
+
     const list = url.searchParams.get("list");
     const v = url.searchParams.get("v");
 
-    if (url.hostname.includes("youtu.be")) {
+    if (url.hostname.toLowerCase().includes("youtu.be")) {
       const id = url.pathname.replace("/", "");
       if (id) return { type: "youtube_video", id };
     }
@@ -64,9 +67,9 @@ export function youtubeEmbedUrl(type: "youtube_video" | "youtube_playlist", id: 
   const base = "https://www.youtube.com/embed/";
   const params = "autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1";
   if (type === "youtube_playlist") {
-    return `${base}videoseries?list=${id}&${params}`;
+    return `${base}videoseries?list=${encodeURIComponent(id)}&${params}`;
   }
-  return `${base}${id}?${params}`;
+  return `${base}${encodeURIComponent(id)}?${params}`;
 }
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif", "bmp"];
@@ -133,9 +136,9 @@ export function formatDateTime(iso: string | null): string {
 
 export function playerUrlFor(slug: string): string {
   if (typeof window !== "undefined") {
-    return `${window.location.origin}/display/${slug}`;
+    return `${window.location.origin}/display/${encodeURIComponent(slug)}`;
   }
-  return `/display/${slug}`;
+  return `/display/${encodeURIComponent(slug)}`;
 }
 
 /** Kunci localStorage tempat TV menyimpan slug layarnya sendiri setelah dipasangkan. */
@@ -144,9 +147,12 @@ export const PAIRING_STORAGE_KEY = "siaran:paired-slug";
 /** Berapa lama kode PIN pairing berlaku sebelum kedaluwarsa otomatis. */
 export const PAIRING_CODE_TTL_MINUTES = 30;
 
-/** Kode PIN 6 digit — dipilih angka saja supaya gampang diketik pakai remote TV. */
+/** Kode PIN 8 karakter alfanumerik — dipilih agar aman tapi tetap gampang diketik pakai remote TV. */
 export function generatePairingCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const arr = new Uint32Array(8);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (x) => chars[x % chars.length]).join("");
 }
 
 export const DEFAULT_AGENDA_COLUMNS = ["No.", "Agenda", "Waktu dan Tempat", "Keterangan"];
