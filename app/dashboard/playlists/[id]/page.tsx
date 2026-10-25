@@ -7,10 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 import type { Media, Playlist, PlaylistItem, Profile } from "@/lib/types";
 import { canEditOwner } from "@/lib/auth";
 import Modal from "@/components/Modal";
+import { useToast } from "@/lib/toast";
 
 export default function PlaylistEditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
   const playlistId = params.id;
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
@@ -63,26 +65,43 @@ export default function PlaylistEditorPage() {
   async function renamePlaylist(name: string) {
     if (!playlist || !name.trim() || name === playlist.name) return;
     const supabase = createClient();
-    await supabase.from("playlists").update({ name: name.trim() }).eq("id", playlistId);
+    const { error } = await supabase.from("playlists").update({ name: name.trim() }).eq("id", playlistId);
+    if (error) {
+      toast.error(`Gagal mengganti nama playlist: ${error.message}`);
+      return;
+    }
+    toast.success(`Nama playlist diubah menjadi "${name.trim()}"`);
     setPlaylist({ ...playlist, name: name.trim() });
   }
 
   async function addMedia(mediaId: string) {
     if (playlist && !canEditOwner(profile, playlist.owner_id)) return;
     const supabase = createClient();
-    await supabase.from("playlist_items").insert({
+    const { error } = await supabase.from("playlist_items").insert({
       playlist_id: playlistId,
       media_id: mediaId,
       sort_order: items.length,
     });
+    if (error) {
+      toast.error(`Gagal menambah konten ke playlist: ${error.message}`);
+      return;
+    }
+    const mediaName = library.find((m) => m.id === mediaId)?.name;
+    toast.success(mediaName ? `"${mediaName}" ditambahkan ke playlist.` : "Konten ditambahkan ke playlist.");
     setShowPicker(false);
     load();
   }
 
   async function removeItem(itemId: string) {
     if (playlist && !canEditOwner(profile, playlist.owner_id)) return;
+    const mediaName = items.find((it) => it.id === itemId)?.media?.name;
     const supabase = createClient();
-    await supabase.from("playlist_items").delete().eq("id", itemId);
+    const { error } = await supabase.from("playlist_items").delete().eq("id", itemId);
+    if (error) {
+      toast.error(`Gagal menghapus konten dari playlist: ${error.message}`);
+      return;
+    }
+    toast.success(mediaName ? `"${mediaName}" dihapus dari playlist.` : "Konten dihapus dari playlist.");
     load();
   }
 

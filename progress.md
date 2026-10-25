@@ -353,4 +353,50 @@ signage/
 
 ---
 
-_Terakhir diperbarui: 2026-10-08_
+### [2026-10-25] FIX: Video CDN tidak bisa diputar (Content Security Policy)
+
+- **Status:** Selesai (build hijau)
+- **Gejala:** Video dari link CDN tampil blank hitam di player TV. Thumbnail video CDN yang sama **tampil normal** di halaman Konten Media.
+- **ROOT CAUSE:** `media-src` pada header CSP di `next.config.ts` hanya mengizinkan `self` + `*.supabase.co`. Domain CDN (mis. `cdn.knwng.my.id`) diblokir **browser** sebelum request dikirim. Bukan bug kode player sama sekali.
+- **Mengapa menyesatkan:**
+  - <img> diatur `img-src` (permisif) sehingga thumbnail lolos, sedangkan <video> diatur `media-src` (ketat) sehingga terblokir.
+  - CSP baru masuk saat Security Hardening (2026-10-08), sehingga sebelumnya link CDN memang berjalan normal.
+  - Blokir terjadi di layer browser, jadi tidak ada error di server maupun log aplikasi.
+- **Kontradiksi desain:** Aplikasi ini secara resmi mendukung fitur "CDN link generik" (lihat AGENTS.md), tetapi CSP sejak awal memblokirnya. Fitur tersebut tidak pernah benar-benar berfungsi.
+- **Perbaikan:**
+  - `next.config.ts`: `media-src 'self' https://*.supabase.co` -> `media-src 'self' blob: data: https:`
+  - `https:` = izinkan semua CDN via HTTPS (sesuai desain CDN link generik; tidak perlu ubah saat ganti domain). `blob:` untuk preview upload (URL.createObjectURL), `data:` untuk media inline. Tetap menolak `http:` dan skema berbahaya.
+- **Catatan wajib setelah deploy:** Header CSP di-cache browser. Restart server/redeploy lalu **hard refresh** di TV (Ctrl+Shift+R) atau gunakan tombol "Lepas pasangan" agar header baru terpakai.
+- **Pelajaran (PENTING):**
+  1. Baca **Console browser** lebih dulu. Pesan `violates the following Content Security Policy directive` langsung menunjuk penyebab.
+  2. Petunjuk pembeda gejala ("A tampil, B tidak") adalah kunci diagnosis. Thumbnail tampil + video tidak = masalahnya di level **izin resource**, bukan kode player.
+  3. Jika perbaikan tidak mengubah gejala apa pun, **berhenti menebak** dan cari bukti baru (Console / Network tab / header response).
+- **Build:** OK
+---
+
+### [2026-10-26] FIX: Video terpotong & blank hitam saat transisi playlist
+
+- **Status:** Selesai (build hijau, lint baseline tetap 35)
+- **Gejala 1:** Video (khususnya dari CDN) berganti ke konten berikutnya sebelum durasinya selesai — terpotong di tengah jalan.
+- **Gejala 2:** Saat looping dari konten terakhir kembali ke konten pertama, muncul glitch: visual konten pertama -> blank hitam -> baru normal.
+- **ROOT CAUSE #1 (durasi):** `app/display/[slug]/page.tsx` memasang `setTimeout(advance, 30_000)` tanpa syarat untuk SEMUA video tanpa `duration_override`. Timer tidak tahu apakah video sedang berputar atau macet, jadi video sehat berdurasi panjang selalu dipotong di detik ke-30. (Regresi dari perubahan sebelumnya yang menurunkan cadangan 3 menit -> 30 detik.)
+- **ROOT CAUSE #2 (transisi):** Crossfade berbasis `opacity` — lapis lama memudar habis sementara video baru belum punya frame pertama -> layar kosong. Diperparah `zIndex` yang berubah seketika bersamaan dengan animasi opacity (memicu re-compositing; di Android TV menghasilkan 1-2 frame hitam). Selain itu status "ready" di-reset saat looping sehingga crossfade menunggu dari nol.
+- **Perbaikan #1 — Watchdog durasi berbasis progres:**
+  - `app/display/[slug]/page.tsx`: ganti timer tanpa syarat dengan `setInterval` 1 detik yang memeriksa `currentTime` video aktif.
+  - Video dianggap sehat selama `currentTime` terus maju -> tidak pernah dipotong.
+  - `advance()` hanya dipanggil bila macet >= 30 detik (CDN stall / decoder mati).
+  - Prop baru `onActiveVideoChange` pada `SlideStage` -> pemutar induk membaca elemen `<video>` yang SEDANG tayang (bukan lapis prefetch).
+- **Perbaikan #2 — Penukaran instan (tanpa crossfade):**
+  - `components/SlideStage.tsx` ditulis ulang: `displayed` + `staged` (dulu `displayed` + `incoming` + `incomingVisible`).
+  - Hapus semua `opacity`/`transition`/`zIndex` dinamis; lapis prefetch disembunyikan via `visibility: hidden`.
+  - Konten lama tetap terlihat PENUH sampai konten baru dijamin punya frame (`readyState >= 2` atau event `playing`), lalu ditukar dalam satu batch React (`swapIn()`).
+  - Failsafe dinaikkan 3 dtk -> 8 dtk, diposisikan sebagai jaring terakhir.
+  - Status ready tidak lagi di-reset saat looping -> item hasil prefetch langsung ditukar tanpa menunggu.
+- **Keputusan desain FINAL:** Player TV memakai **penukaran instan, bukan crossfade**. Crossfade berbasis opacity terbukti menyebabkan blank hitam pada video CDN besar dan tidak boleh dihidupkan kembali tanpa pengujian matang di TV.
+- **Catatan cache video (hasil analisis):**
+  - Metadata playlist di-query Supabase **sekali** per perubahan `activePlaylistId`; looping tidak memicu query ulang.
+  - `<video>` memakai `key={media.url}` -> elemen dibuat baru tiap giliran, tetapi request dilayani **HTTP cache browser** berkat header CDN (`Cache-Control: max-age=14400` + `ETag`) -> bukan download ulang penuh setiap putaran.
+  - `localStorage` TIDAK dipakai untuk video (hanya menyimpan slug pairing).
+- **Build:** OK - **Lint:** 35 problems (baseline, tidak ada masalah baru)
+
+_Terakhir diperbarui: 2026-10-26_

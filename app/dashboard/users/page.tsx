@@ -4,7 +4,9 @@ import type { Profile } from "@/lib/types";
 import { BIDANG_OPTIONS } from "@/lib/types";
 import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
+import { useToast } from "@/lib/toast";
 export default function UsersPage() {
+  const toast = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -30,14 +32,16 @@ export default function UsersPage() {
     e.preventDefault(); setError(null); setSaving(true);
     const r = await fetch("/api/admin/create-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, bidang }) });
     const j = await r.json(); setSaving(false);
-    if (!r.ok) { setError(j.error ?? "Gagal"); return; }
+    if (!r.ok) { setError(j.error ?? "Gagal"); toast.error(j.error ?? "Gagal membuat user."); return; }
+    toast.success(`Operator ${email} berhasil dibuat.`);
     setEmail(""); setPassword(""); setBidang("TU"); setShowAdd(false); load();
   }
   async function handleDelete(p: Profile) {
     setDeleting(true);
     const r = await fetch("/api/admin/users/" + p.id, { method: "DELETE" });
     const j = await r.json(); setDeleting(false);
-    if (!r.ok) { alert(j.error ?? "Gagal"); return; }
+    if (!r.ok) { toast.error(j.error ?? "Gagal menghapus user."); return; }
+    toast.success(`User ${p.email} dihapus.`);
     setConfirmDelete(null); load();
   }
   return (

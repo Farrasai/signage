@@ -29,6 +29,8 @@ export default function DisplayPlayerPage() {
 
   const itemsRef = useRef<PlaylistItem[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Elemen <video> yang SEDANG tayang (diisi dari SlideStage) — dipakai watchdog durasi. */
+  const activeVideoRef = useRef<HTMLVideoElement | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playCountRef = useRef(0);
@@ -442,14 +444,35 @@ export default function DisplayPlayerPage() {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (paused || !currentItem?.media) return;
 
-    // Uploaded videos advance on their own "ended" event; only set a
-    // safety timer if the operator explicitly overrode the duration.
+    // Video memajukan dirinya sendiri lewat event "ended". Timer cadangan di
+    // sini HANYA untuk video yang benar-benar macet (bukan memotong video sehat).
+    // Dulu timer 30 dtk dipasang tanpa syarat sehingga video panjang terpotong
+    // di tengah jalan sebelum selesai.
     if (currentItem.media.type === "video" && !currentItem.duration_override) {
-      // Fallback ekstrim: maksimal 3 menit jika event 'ended' tidak pernah jalan
-      timerRef.current = setTimeout(advance, 180000);
-      return () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-      };
+      let lastTime = -1;
+      let stalledMs = 0;
+      const tick = setInterval(() => {
+        const v = activeVideoRef.current;
+        if (!v) {
+          // Elemen video belum terpasang. Beri waktu, tapi tetap dibatasi
+          // agar playlist tidak macet selamanya.
+          stalledMs += 1000;
+          if (stalledMs >= 30000) advance();
+          return;
+        }
+        // Video sehat = currentTime terus maju. Reset penghitung macet.
+        if (v.currentTime !== lastTime) {
+          lastTime = v.currentTime;
+          stalledMs = 0;
+          return;
+        }
+        stalledMs += 1000;
+        if (stalledMs >= 30000) {
+          console.warn("Video macet 30 dtk - lanjut ke konten berikutnya.");
+          advance();
+        }
+      }, 1000);
+      return () => clearInterval(tick);
     }
 
     const seconds = currentItem.duration_override ?? currentItem.media.duration ?? 10;
@@ -573,7 +596,14 @@ export default function DisplayPlayerPage() {
         {!currentItem?.media ? (
           <WaitingScreen name={display.name} hasPlaylist={Boolean(activePlaylistId)} />
         ) : (
-          <SlideStage items={items} currentIndex={currentIndex} onVideoEnded={advance} />
+          <SlideStage
+            items={items}
+            currentIndex={currentIndex}
+            onVideoEnded={advance}
+            onActiveVideoChange={(el) => {
+              activeVideoRef.current = el;
+            }}
+          />
         )}
       </div>
 

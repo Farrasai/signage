@@ -17,6 +17,7 @@ import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
 import { useMemo } from "react";
 import EditMediaModal from "@/components/EditMediaModal";
+import { useToast } from "@/lib/toast";
 
 function readVideoDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
@@ -59,6 +60,7 @@ function formatDate(iso: string) {
 }
 
 export default function MediaPage() {
+  const toast = useToast();
   const [items, setItems] = useState<Media[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -137,6 +139,8 @@ export default function MediaPage() {
     if (!files || files.length === 0) return;
     setUploading(true);
     const supabase = createClient();
+    let succeeded = 0;
+    let failedCount = 0;
 
     for (const file of Array.from(files)) {
       setProgressLabel(`Mengunggah ${file.name}...`);
@@ -149,25 +153,35 @@ export default function MediaPage() {
         upsert: false,
       });
       if (uploadError) {
-        alert(`Gagal mengunggah ${file.name}: ${uploadError.message}`);
+        toast.error(`Gagal mengunggah ${file.name}: ${uploadError.message}`);
+        failedCount++;
         continue;
       }
 
       const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
       const duration = isVideo ? await readVideoDuration(file) : 10;
 
-      await supabase.from("media").insert({
+      const { error: insertError } = await supabase.from("media").insert({
         name: file.name.replace(/\.[^.]+$/, ""),
         type,
         url: pub.publicUrl,
         duration,
       });
+      if (insertError) {
+        toast.error(`Gagal menyimpan ${file.name}: ${insertError.message}`);
+        failedCount++;
+        continue;
+      }
+      succeeded++;
     }
 
     setUploading(false);
     setProgressLabel("");
     setShowAdd(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (succeeded > 0) {
+      toast.success(`${succeeded} konten berhasil diunggah${failedCount ? ` (${failedCount} gagal)` : ""}.`);
+    }
     load();
   }
 
@@ -181,13 +195,19 @@ export default function MediaPage() {
     }
     setUploading(true);
     const supabase = createClient();
-    await supabase.from("media").insert({
-      name: ytName.trim() || (parsed.type === "youtube_playlist" ? "Playlist YouTube" : "Video YouTube"),
+    const mediaName = ytName.trim() || (parsed.type === "youtube_playlist" ? "Playlist YouTube" : "Video YouTube");
+    const { error } = await supabase.from("media").insert({
+      name: mediaName,
       type: parsed.type,
       url: parsed.id,
       duration: ytDuration,
     });
     setUploading(false);
+    if (error) {
+      toast.error(`Gagal menambah konten YouTube: ${error.message}`);
+      return;
+    }
+    toast.success(`"${mediaName}" berhasil ditambahkan.`);
     setYtUrl("");
     setYtName("");
     setYtDuration(30);
@@ -216,13 +236,19 @@ export default function MediaPage() {
     setUploading(true);
     const supabase = createClient();
     const fallbackName = decodeURIComponent(parsedUrl.pathname.split("/").pop() || "Konten CDN");
-    await supabase.from("media").insert({
-      name: cdnName.trim() || fallbackName,
+    const mediaName = cdnName.trim() || fallbackName;
+    const { error } = await supabase.from("media").insert({
+      name: mediaName,
       type: cdnType,
       url: parsedUrl.toString(),
       duration: cdnDuration,
     });
     setUploading(false);
+    if (error) {
+      toast.error(`Gagal menambah konten dari link: ${error.message}`);
+      return;
+    }
+    toast.success(`"${mediaName}" berhasil ditambahkan.`);
     setCdnUrl("");
     setCdnName("");
     setCdnDuration(10);
@@ -292,7 +318,7 @@ export default function MediaPage() {
     const supabase = createClient();
     const safeTitle = sanitizeText(tableTitle.trim() || "Tabel").slice(0, 100);
     const safeRows = tableRows.map((row) => row.map((cell) => sanitizeText(cell)));
-    await supabase.from("media").insert({
+    const { error } = await supabase.from("media").insert({
       name: safeTitle,
       type: "table",
       url: "",
@@ -300,6 +326,11 @@ export default function MediaPage() {
       content: { title: safeTitle, columns: cleanColumns, rows: safeRows },
     });
     setUploading(false);
+    if (error) {
+      toast.error(`Gagal menyimpan tabel: ${error.message}`);
+      return;
+    }
+    toast.success(`Tabel "${safeTitle}" berhasil ditambahkan.`);
     setTableTitle("Agenda Kegiatan");
     setTableColumns(DEFAULT_AGENDA_COLUMNS);
     setTableRows([]);
@@ -311,7 +342,12 @@ export default function MediaPage() {
 
   async function updateDuration(id: string, duration: number) {
     const supabase = createClient();
-    await supabase.from("media").update({ duration }).eq("id", id);
+    const { error } = await supabase.from("media").update({ duration }).eq("id", id);
+    if (error) {
+      toast.error(`Gagal menyimpan durasi: ${error.message}`);
+      return;
+    }
+    toast.success(`Durasi diubah menjadi ${duration} detik.`);
     setItems((prev) => prev.map((m) => (m.id === id ? { ...m, duration } : m)));
   }
 
@@ -321,8 +357,13 @@ export default function MediaPage() {
       const path = item.url.slice(mediaStorageBase().length);
       if (path) await supabase.storage.from("media").remove([decodeURIComponent(path)]);
     }
-    await supabase.from("media").delete().eq("id", item.id);
+    const { error } = await supabase.from("media").delete().eq("id", item.id);
     setConfirmDelete(null);
+    if (error) {
+      toast.error(`Gagal menghapus konten: ${error.message}`);
+      return;
+    }
+    toast.success(`"${item.name}" dihapus.`);
     load();
   }
 
@@ -943,6 +984,7 @@ export default function MediaPage() {
           onClose={() => setEditingItem(null)}
           onSaved={() => {
             setEditingItem(null);
+            toast.success("Perubahan konten disimpan.");
             load();
           }}
         />

@@ -8,8 +8,10 @@ import { PAIRING_CODE_TTL_MINUTES, generatePairingCode, generateSlug, playerUrlF
 import { canEditDisplay, isAdmin } from "@/lib/auth";
 import Modal from "@/components/Modal";
 import RemoteControls from "@/components/RemoteControls";
+import { useToast } from "@/lib/toast";
 
 export default function DisplaysPage() {
+  const toast = useToast();
   const [displays, setDisplays] = useState<Display[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,18 +71,37 @@ export default function DisplaysPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const bidangVal = isAdmin(profile) ? newBidang : (profile?.bidang ?? null);
-    await supabase.from("displays").insert({ name: newName.trim(), slug: generateSlug(newName), owner_id: user?.id ?? null, bidang: bidangVal });
-    setSaving(false); setNewName(""); setShowAdd(false); load();
+    const { error } = await supabase.from("displays").insert({ name: newName.trim(), slug: generateSlug(newName), owner_id: user?.id ?? null, bidang: bidangVal });
+    setSaving(false);
+    if (error) {
+      toast.error(`Gagal menambah layar: ${error.message}`);
+      return;
+    }
+    toast.success(`Layar "${newName.trim()}" berhasil ditambahkan.`);
+    setNewName(""); setShowAdd(false); load();
   }
   async function updateDisplay(id: string, patch: Partial<Display>) {
     const supabase = createClient();
-    await supabase.from("displays").update(patch).eq("id", id);
+    const { error } = await supabase.from("displays").update(patch).eq("id", id);
+    if (error) {
+      toast.error(`Gagal menyimpan perubahan layar: ${error.message}`);
+      load();
+      return;
+    }
+    toast.success("Perubahan layar disimpan.");
     setDisplays((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   }
   async function deleteDisplay(id: string) {
+    const name = displays.find((d) => d.id === id)?.name;
     const supabase = createClient();
-    await supabase.from("displays").delete().eq("id", id);
-    setConfirmDelete(null); load();
+    const { error } = await supabase.from("displays").delete().eq("id", id);
+    setConfirmDelete(null);
+    if (error) {
+      toast.error(`Gagal menghapus layar: ${error.message}`);
+      return;
+    }
+    toast.success(name ? `Layar "${name}" dihapus.` : "Layar dihapus.");
+    load();
   }
   async function copyUrl(slug: string, id: string) {
     await navigator.clipboard.writeText(playerUrlFor(slug));

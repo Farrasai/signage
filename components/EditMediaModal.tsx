@@ -115,10 +115,15 @@ export default function EditMediaModal({
       }
       const safeTitle = sanitizeText(tableTitle.trim() || "Tabel").slice(0, 100);
       const safeRows = tableRows.map((row) => row.map((cell) => sanitizeText(cell)));
-      await supabase
+      const { error } = await supabase
         .from("media")
         .update({ name: safeTitle, duration, content: { title: safeTitle, columns: cleanColumns, rows: safeRows } })
         .eq("id", item.id);
+      if (error) {
+        setError(`Gagal menyimpan: ${error.message}`);
+        setSaving(false);
+        return;
+      }
     } else if (isYoutube) {
       const parsed = parseYouTubeUrl(ytUrl);
       if (!parsed) {
@@ -126,10 +131,15 @@ export default function EditMediaModal({
         setSaving(false);
         return;
       }
-      await supabase
+      const { error } = await supabase
         .from("media")
         .update({ name: name.trim() || item.name, type: parsed.type, url: parsed.id, duration })
         .eq("id", item.id);
+      if (error) {
+        setError(`Gagal menyimpan: ${error.message}`);
+        setSaving(false);
+        return;
+      }
     } else if (isStorageFile) {
       let finalUrl = item.url;
       if (replaceFile) {
@@ -148,10 +158,15 @@ export default function EditMediaModal({
         const oldPath = item.url.slice(mediaStorageBase().length);
         if (oldPath) await supabase.storage.from("media").remove([decodeURIComponent(oldPath)]);
       }
-      await supabase
+      const { error } = await supabase
         .from("media")
         .update({ name: name.trim() || item.name, url: finalUrl, duration })
         .eq("id", item.id);
+      if (error) {
+        setError(`Gagal menyimpan: ${error.message}`);
+        setSaving(false);
+        return;
+      }
     } else {
       let parsedUrl: URL;
       try {
@@ -162,10 +177,15 @@ export default function EditMediaModal({
         setSaving(false);
         return;
       }
-      await supabase
+      const { error } = await supabase
         .from("media")
         .update({ name: name.trim() || item.name, type: linkType, url: parsedUrl.toString(), duration })
         .eq("id", item.id);
+      if (error) {
+        setError(`Gagal menyimpan: ${error.message}`);
+        setSaving(false);
+        return;
+      }
     }
 
     setSaving(false);

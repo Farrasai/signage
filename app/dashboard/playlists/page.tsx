@@ -7,8 +7,10 @@ import type { Playlist, Profile } from "@/lib/types";
 import { canEditOwner } from "@/lib/auth";
 import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
+import { useToast } from "@/lib/toast";
 
 export default function PlaylistsPage() {
+  const toast = useToast();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -52,17 +54,28 @@ export default function PlaylistsPage() {
     if (!newName.trim()) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("playlists").insert({ name: newName.trim(), owner_id: userId });
+    const { error } = await supabase.from("playlists").insert({ name: newName.trim(), owner_id: userId });
     setSaving(false);
+    if (error) {
+      toast.error(`Gagal membuat playlist: ${error.message}`);
+      return;
+    }
+    toast.success(`Playlist "${newName.trim()}" berhasil dibuat.`);
     setNewName("");
     setShowAdd(false);
     load();
   }
 
   async function deletePlaylist(id: string) {
+    const name = playlists.find((p) => p.id === id)?.name;
     const supabase = createClient();
-    await supabase.from("playlists").delete().eq("id", id);
+    const { error } = await supabase.from("playlists").delete().eq("id", id);
     setConfirmDelete(null);
+    if (error) {
+      toast.error(`Gagal menghapus playlist: ${error.message}`);
+      return;
+    }
+    toast.success(name ? `Playlist "${name}" dihapus.` : "Playlist dihapus.");
     load();
   }
 

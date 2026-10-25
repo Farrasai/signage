@@ -8,6 +8,7 @@ import { sanitizeText } from "@/lib/sanitize";
 import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
 import StatusDot from "@/components/StatusDot";
+import { useToast } from "@/lib/toast";
 
 function getStoragePath(raw: string | null): string | null {
   try {
@@ -24,6 +25,7 @@ function getStoragePath(raw: string | null): string | null {
 type TabMode = "schedules" | "broadcast";
 
 export default function AnnouncerPage() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<TabMode>("schedules");
   const [annPage, setAnnPage] = useState(1);
   const [queuePage, setQueuePage] = useState(1);
@@ -52,9 +54,6 @@ export default function AnnouncerPage() {
   // Audio Preview State
   const [previewAudioId, setPreviewAudioId] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Trigger feedback
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   // ---------- Broadcast & Queue State ----------
   const [queue, setQueue] = useState<AnnouncerItem[]>([]);
@@ -162,8 +161,9 @@ export default function AnnouncerPage() {
     });
 
     if (!error) {
-      setActionNotice(`Pengumuman "${item.label}" berhasil dimasukkan ke antrean siaran TV!`);
-      setTimeout(() => setActionNotice(null), 4000);
+      toast.success(`Pengumuman "${item.label}" berhasil dimasukkan ke antrean siaran TV!`);
+    } else {
+      toast.error(`Gagal memasukkan ke antrean: ${error.message}`);
     }
   }
 
@@ -175,7 +175,16 @@ export default function AnnouncerPage() {
     );
 
     const supabase = createClient();
-    await supabase.from("announcements").update({ is_enabled: nextVal }).eq("id", item.id);
+    const { error } = await supabase.from("announcements").update({ is_enabled: nextVal }).eq("id", item.id);
+    if (error) {
+      toast.error(`Gagal mengubah status pengumuman: ${error.message}`);
+      // kembalikan state optimistis
+      setAnnouncements((prev) =>
+        prev.map((a) => (a.id === item.id ? { ...a, is_enabled: item.is_enabled } : a))
+      );
+      return;
+    }
+    toast.success(nextVal ? "Pengumuman diaktifkan." : "Pengumuman dinonaktifkan.");
   }
 
   // ---------- Open Create / Edit Schedule Modal ----------
@@ -299,6 +308,7 @@ export default function AnnouncerPage() {
           await supabase.storage.from("announcer").remove([newStoragePath]);
         }
         setSchedError(`Gagal memperbarui: ${updateError.message}`);
+        toast.error(`Gagal memperbarui pengumuman: ${updateError.message}`);
         setSchedSaving(false);
         return;
       }
@@ -311,12 +321,14 @@ export default function AnnouncerPage() {
       if (insertError) {
         if (newStoragePath) await supabase.storage.from("announcer").remove([newStoragePath]);
         setSchedError(`Gagal menyimpan: ${insertError.message}`);
+        toast.error(`Gagal menyimpan pengumuman: ${insertError.message}`);
         setSchedSaving(false);
         return;
       }
     }
 
     setSchedSaving(false);
+    toast.success(editingSchedule ? "Perubahan pengumuman disimpan." : "Pengumuman berhasil dibuat.");
     setShowScheduleModal(false);
     load();
   }
@@ -325,6 +337,7 @@ export default function AnnouncerPage() {
   async function handleDeleteSchedule() {
     if (!confirmDeleteSchedule) return;
     const supabase = createClient();
+    const deletedLabel = confirmDeleteSchedule.label;
 
     const storagePath = (confirmDeleteSchedule.storage_path as string | null) ?? getStoragePath(confirmDeleteSchedule.audio_url);
     // hapus file dulu (best-effort) lalu row — delete row tidak tergantung storage
@@ -332,8 +345,13 @@ export default function AnnouncerPage() {
       await supabase.storage.from("announcer").remove([storagePath]);
     }
 
-    await supabase.from("announcements").delete().eq("id", confirmDeleteSchedule.id);
+    const { error } = await supabase.from("announcements").delete().eq("id", confirmDeleteSchedule.id);
     setConfirmDeleteSchedule(null);
+    if (error) {
+      toast.error(`Gagal menghapus pengumuman: ${error.message}`);
+      return;
+    }
+    toast.success(`Pengumuman "${deletedLabel}" dihapus.`);
     load();
   }
 
@@ -366,7 +384,7 @@ export default function AnnouncerPage() {
     }
 
     const { data: pub } = supabase.storage.from("announcer").getPublicUrl(path);
-    await supabase.from("announcer_queue").insert({
+    const { error: queueError } = await supabase.from("announcer_queue").insert({
       label: sanitizeText(broadcastLabel.trim() || "Pengumuman").slice(0, 100),
       audio_url: pub.publicUrl,
       storage_path: path,
@@ -376,6 +394,13 @@ export default function AnnouncerPage() {
     });
 
     setBroadcastUploading(false);
+    if (queueError) {
+      await supabase.storage.from("announcer").remove([path]);
+      setBroadcastError(`Gagal menyiarkan: ${queueError.message}`);
+      toast.error(`Gagal menyiarkan pengumuman: ${queueError.message}`);
+      return;
+    }
+    toast.success("Pengumuman siaran langsung berhasil dikirim ke antrean.");
     setShowBroadcastModal(false);
     setBroadcastFile(null);
     if (broadcastFileInputRef.current) broadcastFileInputRef.current.value = "";
@@ -392,7 +417,12 @@ export default function AnnouncerPage() {
         await supabase.storage.from("announcer").remove([storagePath]);
       }
     }
-    await supabase.from("announcer_queue").delete().eq("id", item.id);
+    const { error } = await supabase.from("announcer_queue").delete().eq("id", item.id);
+    if (error) {
+      toast.error(`Gagal membatalkan antrean: ${error.message}`);
+      return;
+    }
+    toast.success("Item antrean dibatalkan.");
   }
 
   // Helper toggle day
@@ -408,15 +438,6 @@ export default function AnnouncerPage() {
   return (
     <div>
       {/* Header & Tabs */}
-      {/* Alert Notifikasi Aksi */}
-      {actionNotice && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-600-soft px-4 py-3 text-sm text-slate-900 dark:text-white">
-          <span>✓ {actionNotice}</span>
-          <button onClick={() => setActionNotice(null)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white">
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* ================= TAB 1: PENGUMUMAN TERJADWAL ================= */}
       {activeTab === "schedules" && (

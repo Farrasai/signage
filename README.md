@@ -1,4 +1,4 @@
-﻿# Siaran â€” Digital Signage CMS
+# Siaran â€” Digital Signage CMS
 
 CMS sederhana untuk mengelola TV / video wall dari mana saja: pilih foto, video,
 atau playlist YouTube; atur durasi tiap konten; jadwalkan per hari & jam;
@@ -98,3 +98,32 @@ Buka `http://localhost:3000` â†’ otomatis diarahkan ke halaman login.
   membuat/mengubah/menghapus konten hanya bisa oleh admin yang login. Ini
   cocok untuk pemakaian internal; untuk publik/skala besar, pertimbangkan
   memperketat kebijakan RLS lebih lanjut.
+
+## 7. Link CDN video & Content Security Policy (PENTING)
+
+Aplikasi ini mendukung **link CDN generik** untuk foto/video (Cloudinary, Bunny,
+server sendiri, dll) selain upload ke Supabase Storage.
+
+Agar video dari domain luar bisa diputar, header CSP di `next.config.ts` **harus**
+mengizinkan domain tersebut pada direktif `media-src`. Saat ini diset:
+
+```
+media-src self blob: data: https:
+```
+
+- `https:` -> semua CDN via HTTPS diizinkan (tidak perlu diubah saat ganti provider).
+- `blob:` -> untuk preview upload (`URL.createObjectURL`).
+- `data:` -> untuk media inline.
+
+**Jangan pernah mempersempit `media-src` hanya ke `self` + Supabase** tanpa
+menambahkan domain CDN, karena video CDN akan **blank hitam** di player TV padahal
+thumbnail-nya tetap tampil di dashboard (thumbnail diatur `img-src`, bukan
+`media-src`). Ini pernah terjadi dan sangat membingungkan karena tidak ada error
+di server maupun log aplikasi.
+
+Untuk mengecek cepat: buka player TV, tekan F12 lalu tab **Console**. Jika muncul pesan
+tentang `violates the following Content Security Policy directive` pada
+`media-src`, berarti domain CDN belum diizinkan.
+
+Setelah mengubah CSP, **restart server** dan **hard refresh** browser TV (Ctrl+Shift+R)
+karena header CSP di-cache browser.

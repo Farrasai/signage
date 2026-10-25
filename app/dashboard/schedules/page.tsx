@@ -7,8 +7,10 @@ import { canEditOwner, isAdmin } from "@/lib/auth";
 import { DAYS } from "@/lib/types";
 import Modal from "@/components/Modal";
 import Pagination from "@/components/Pagination";
+import { useToast } from "@/lib/toast";
 
 export default function SchedulesPage() {
+  const toast = useToast();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [displays, setDisplays] = useState<Display[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -69,7 +71,7 @@ export default function SchedulesPage() {
     if (!form.display_id || !form.playlist_id) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("schedules").insert({
+    const { error } = await supabase.from("schedules").insert({
       display_id: form.display_id,
       playlist_id: form.playlist_id,
       days_of_week: Array.from(form.days),
@@ -78,6 +80,11 @@ export default function SchedulesPage() {
       priority: form.priority,
     });
     setSaving(false);
+    if (error) {
+      toast.error(`Gagal membuat jadwal: ${error.message}`);
+      return;
+    }
+    toast.success("Jadwal tayang berhasil dibuat.");
     setShowAdd(false);
     load();
   }
@@ -85,11 +92,15 @@ export default function SchedulesPage() {
   async function deleteSchedule(id: string) {
     // guard checked in UI disabled prop, but also early return
     const supabase = createClient();
-    await supabase.from("schedules").delete().eq("id", id);
+    const { error } = await supabase.from("schedules").delete().eq("id", id);
     setConfirmDelete(null);
+    if (error) {
+      toast.error(`Gagal menghapus jadwal: ${error.message}`);
+      return;
+    }
+    toast.success("Jadwal tayang dihapus.");
     load();
   }
-
   function displayName(id: string) {
     return displays.find((d) => d.id === id)?.name ?? "Layar terhapus";
   }

@@ -3,12 +3,14 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast, queueToast } from "@/lib/toast";
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60_000;
 
 export default function LoginPage() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,9 @@ export default function LoginPage() {
     setError(null);
 
     if (lockedUntil && Date.now() < lockedUntil) {
-      setError("Terlalu banyak percobaan gagal. Silakan tunggu sebentar.");
+      const msg = "Terlalu banyak percobaan gagal. Silakan tunggu sebentar.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -35,17 +39,22 @@ export default function LoginPage() {
     if (error) {
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
+      let msg: string;
       if (nextAttempts >= MAX_ATTEMPTS) {
         setLockedUntil(Date.now() + LOCKOUT_MS);
-        setError("Terlalu banyak percobaan gagal. Coba lagi dalam 1 menit.");
+        msg = "Terlalu banyak percobaan gagal. Coba lagi dalam 1 menit.";
       } else {
-        setError("Email atau password salah.");
+        msg = "Email atau password salah.";
       }
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setAttempts(0);
     setLockedUntil(null);
+    // Toast ditampilkan di halaman tujuan setelah redirect penuh.
+    queueToast("success", "Berhasil masuk. Selamat datang!");
     router.replace("/dashboard");
     router.refresh();
   }
