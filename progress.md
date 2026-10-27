@@ -399,4 +399,34 @@ signage/
   - `localStorage` TIDAK dipakai untuk video (hanya menyimpan slug pairing).
 - **Build:** OK - **Lint:** 35 problems (baseline, tidak ada masalah baru)
 
+---
+
+### [2026-10-26] FIX: Upload audio pengumuman gagal (RLS storage bucket)
+
+- **Status:** Selesai (migrasi dibuat; perlu dijalankan manual di Supabase Dashboard)
+- **Gejala:** Upload file audio di `/dashboard/announcer` gagal dengan pesan `Gagal mengunggah file audio: new row violates row-level security policy`.
+- **ROOT CAUSE:** Error berasal dari `storage.objects`, BUKAN dari kode `page.tsx` dan BUKAN dari RLS tabel. Policy `INSERT` untuk bucket `announcer` tidak ada / hilang di project, sehingga PostgreSQL menolak upload. Kode upload di `app/dashboard/announcer/page.tsx` sendiri sudah benar.
+- **Cara membedakan:** error RLS pada storage muncul saat upload (sebelum insert tabel) dan tidak menyebut nama tabel. Kalau masalahnya role, error akan menyebut `announcements`/`announcer_queue` dan baru muncul setelah file ter-upload.
+- **Perbaikan:** `supabase/migrations/20261026_announcer_storage_fix.sql` (baru, idempotent) — memastikan bucket `announcer` ada & publik, lalu membuat ulang 3 policy: SELECT publik (player TV anonim), INSERT & DELETE untuk `authenticated`.
+- **Keputusan desain:** Policy storage tetap `to authenticated` (bukan `is_admin()`), konsisten dengan bucket `media`. Pembatasan fitur ke admin sudah dijaga di UI + `proxy.ts` + RLS tabel `announcements`/`announcer_queue`.
+- **Langkah manual:** Jalankan migrasi di Supabase Dashboard > SQL Editor, lalu cek hasil query verifikasi di dalam file migrasi (harus muncul 3 policy: SELECT/INSERT/DELETE + bucket `public = true`).
+- **Build:** OK
+
+---
+
+### [2026-10-26] FIX: Tombol CREATE pengumuman hilang + tab Siaran Langsung mati
+
+- **Status:** Selesai (build hijau, lint baseline turun 35 -> 34)
+- **Laporan user:** Setelah berhasil upload/buat pengumuman, tidak ada tombol tambah (CREATE) pengumuman.
+- **ROOT CAUSE #1:** Tombol tambah HANYA dirender di dalam empty-state (`announcements.length === 0 ? ... : <table>`). Begitu satu data ada, cabang empty-state tidak aktif sehingga tombol hilang bersama CTA "Buat Jadwal Pertama".
+- **ROOT CAUSE #2 (lebih serius):** `setActiveTab` dideklarasikan tapi TIDAK PERNAH dipanggil (hanya 1 kemunculan = deklarasi `useState`). Akibatnya `activeTab` selalu `"schedules"` dan seluruh blok `{activeTab === "broadcast" && ...}` serta modal Siaran Langsung TIDAK BISA diakses sama sekali. Ini sisa redesign tab terpadu yang tidak selesai.
+- **Perbaikan di `app/dashboard/announcer/page.tsx`:**
+  - Tambah toolbar permanen di atas konten: tab switcher (Jadwal Pengumuman / Siaran Langsung) + tombol tambah yang selalu terlihat.
+  - Tombol tunggal adaptif: tab schedules -> `+ Tambah Pengumuman` (buka modal jadwal), tab broadcast -> `Mulai Siaran` (buka modal siaran langsung).
+  - Tambah helper `openBroadcastModal()` yang me-reset form broadcast (label/repeat/target/file) — sebelumnya modal broadcast tidak punya jalan masuk dari UI.
+  - Hapus tombol duplikat "Buat Jadwal Pertama" di empty-state; teks diubah jadi arahan ke tombol toolbar (pakai `&ldquo;`/`&rdquo;` agar lolos `react/no-unescaped-entities`).
+  - `data-testid="add-schedule-announcement-button"` dipertahankan pada tombol baru agar kompatibel dengan test lama.
+- **Pelajaran:** fitur yang "hilang" bisa jadi memang ada tapi hanya dirender kondisional. Cek dengan menghitung kemunculan setter state — `setX` yang tidak pernah dipanggil menandakan UI-nya mati.
+- **Build:** OK - **Lint:** 34 problems (baseline turun 1 karena `setActiveTab` kini terpakai)
+
 _Terakhir diperbarui: 2026-10-26_

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -216,6 +216,19 @@ export default function AnnouncerPage() {
     setSchedError(null);
     if (schedFileInputRef.current) schedFileInputRef.current.value = "";
     setShowScheduleModal(true);
+  }
+
+  // ---------- Open Broadcast Modal (siaran langsung) ----------
+  // Tanpa ini, modal broadcast tidak pernah bisa dibuka dari UI.
+  function openBroadcastModal() {
+    setBroadcastLabel("Pengumuman Siaran Langsung");
+    setBroadcastRepeat(1);
+    setBroadcastTargetMode("all");
+    setBroadcastSelectedDisplays(new Set());
+    setBroadcastFile(null);
+    setBroadcastError(null);
+    if (broadcastFileInputRef.current) broadcastFileInputRef.current.value = "";
+    setShowBroadcastModal(true);
   }
 
   // ---------- Save Schedule (Create or Update) ----------
@@ -437,7 +450,46 @@ export default function AnnouncerPage() {
 
   return (
     <div>
-      {/* Header & Tabs */}
+      {/* Toolbar: tab switcher + tombol tambah permanen */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+          <button
+            type="button"
+            data-testid="tab-schedules"
+            onClick={() => setActiveTab("schedules")}
+            aria-pressed={activeTab === "schedules"}
+            className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-sm transition-colors ${
+              activeTab === "schedules"
+                ? "bg-white font-medium text-slate-900 dark:bg-slate-900 dark:text-white"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            }`}
+          >
+            Jadwal Pengumuman
+          </button>
+          <button
+            type="button"
+            data-testid="tab-broadcast"
+            onClick={() => setActiveTab("broadcast")}
+            aria-pressed={activeTab === "broadcast"}
+            className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-sm transition-colors ${
+              activeTab === "broadcast"
+                ? "bg-white font-medium text-slate-900 dark:bg-slate-900 dark:text-white"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            }`}
+          >
+            Siaran Langsung
+          </button>
+        </div>
+
+        <button
+          type="button"
+          data-testid="add-schedule-announcement-button"
+          onClick={activeTab === "schedules" ? openAddScheduleModal : openBroadcastModal}
+          className="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-700"
+        >
+          {activeTab === "schedules" ? "+ Tambah Pengumuman" : "🎤 Mulai Siaran"}
+        </button>
+      </div>
 
       {/* ================= TAB 1: PENGUMUMAN TERJADWAL ================= */}
       {activeTab === "schedules" && (
@@ -449,15 +501,8 @@ export default function AnnouncerPage() {
               <div className="px-4 py-12 text-center">
                 <p className="text-base font-medium text-slate-900 dark:text-white">Belum ada jadwal pengumuman.</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Buat pengumuman bersuara yang akan otomatis diputar pada jam dan hari tertentu.
+                  Gunakan tombol &ldquo;+ Tambah Pengumuman&rdquo; di kanan atas untuk membuat pengumuman bersuara yang otomatis diputar pada jam dan hari tertentu.
                 </p>
-                <button
-                  data-testid="add-schedule-announcement-button"
-                  onClick={openAddScheduleModal}
-                  className="mt-4 rounded-lg bg-emerald-600 text-white px-4 py-2 text-xs font-medium"
-                >
-                  Buat Jadwal Pertama
-                </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
