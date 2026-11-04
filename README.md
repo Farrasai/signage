@@ -72,7 +72,7 @@ lib/
 
 supabase/                         (di-.gitignore — lihat catatan di bawah)
   schema.sql                      Skema referensi lengkap untuk instalasi baru
-  migrations/                     Migrasi inkremental
+  migrations/                     Migrasi inkremental (5 file - lihat bagian 2)
   fix_profiles_rls.sql            Perbaikan rekursi RLS pada profiles
 
 proxy.ts                          Middleware Next.js 16 (export proxy()), auth + role guard
@@ -97,6 +97,7 @@ progress.md                       Riwayat task
    - `migrations/20261005_announcements.sql` — master jadwal pengumuman
    - `migrations/20261006_multirole.sql` — tabel `profiles`, kolom `owner_id`/`bidang`, RLS multi-role
    - `migrations/20261007_announcer_ownership.sql` — `storage_path` + `source_announcement_id`
+   - `migrations/20261026_announcer_storage_fix.sql` - policy Storage bucket `announcer`: SELECT publik, INSERT/DELETE authenticated. Wajib dijalankan bila upload audio gagal dengan `new row violates row-level security policy`.
    - `fix_profiles_rls.sql` — perbaiki rekursi RLS pada `profiles`
 
    Semua migrasi idempotent (`if not exists` / `drop policy if exists`).
@@ -213,6 +214,9 @@ npm run lint     # eslint
   preferensi disimpan di `localStorage`.
 - **Status online**: TV mengirim heartbeat tiap 25 detik; layar dianggap online bila
   heartbeat terakhir kurang dari 60 detik.
+- **Konten tabel (agenda)**: kolom dan baris disusun dari dashboard (bisa tempel dari Excel). Di layar TV dirender oleh `components/AgendaTable.tsx` dengan tema **terang**: latar putih, header `emerald-600` solid + teks putih **bold**, isi sel `slate-900` **bold**, zebra `emerald-50`. Ukuran font menyesuaikan jumlah baris agar tetap terbaca dari jauh.
+- **Toast notification**: setiap aksi (login/logout, tambah/edit/hapus layar, konten, playlist, jadwal, pengumuman suara, user) memberi umpan balik sukses/gagal lewat `lib/toast`. Untuk logout dipakai `queueToast()` agar pesan tampil setelah pindah ke halaman login.
+- **Pengumuman suara - dua mode**: tab **Jadwal Pengumuman** (otomatis pada jam & hari tertentu) dan tab **Siaran Langsung** (langsung masuk antrean TV). Tombol tambah selalu tersedia di toolbar kanan atas.
 
 ---
 
@@ -233,6 +237,7 @@ npm run lint     # eslint
   dibatasi allowlist domain.
 - **Security headers** di `next.config.ts`: CSP, `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`, `Permissions-Policy`, dan HSTS (production).
+- **RLS Storage terpisah dari RLS tabel**: policy tabel tidak berlaku untuk file. Bucket `media` dan `announcer` masing-masing punya 3 policy di `storage.objects` (SELECT publik untuk player TV anonim, INSERT/DELETE untuk `authenticated`). Jika policy ini hilang, upload gagal dengan `new row violates row-level security policy` - lihat bagian 10.
 
 ## 8. Link CDN video & Content Security Policy (PENTING)
 
@@ -276,4 +281,32 @@ Detail aturan lengkap ada di `AGENTS.md`. Yang paling sering terlewat:
   oleh player **dan** preview dashboard — jangan duplikasi logic render.
 - Setiap migrasi baru harus idempotent, ditaruh di `supabase/migrations/`, dan
   disinkronkan ke `supabase/schema.sql`.
-- Sebelum menganggap selesai, jalankan `npm run build` dan `npx eslint . --max-warnings=999`.
+- Sebelum menganggap selesai, jalankan `npm run build` dan `npx eslint . --max-warnings=999`. Baseline lint saat ini **34 problems** - jangan menambah.
+- Jangan menghidupkan kembali crossfade opacity di `SlideStage.tsx`, memasang timer `advance()` tanpa syarat, mempersempit `media-src`, atau mengembalikan `AgendaTable` ke tema gelap. Semua itu sudah terbukti menimbulkan bug.
+- Tombol aksi (CREATE) wajib permanen di toolbar, bukan hanya di empty-state. Setiap `useState` untuk tab wajib punya pemanggil `setX` - kalau tidak, UI-nya mati.
+
+---
+
+## 10. Pemecahan masalah (gejala -> penyebab -> lokasi)
+
+Bug di aplikasi ini beberapa kali **bukan** di tempat yang terlihat. Baca Console browser (F12) lebih dulu.
+
+| Gejala | Penyebab | Perbaikan di |
+| --- | --- | --- |
+| Video CDN blank hitam, thumbnail di dashboard tetap tampil | CSP `media-src` memblokir domain CDN | `next.config.ts` (bagian 8) |
+| Video berganti sebelum durasinya habis | Timer `advance()` dipasang tanpa syarat | `app/display/[slug]/page.tsx` (watchdog progres) |
+| Blank hitam / glitch saat transisi & looping | Crossfade opacity + `zIndex` dinamis | `components/SlideStage.tsx` (penukaran instan) |
+| Upload audio: `new row violates row-level security policy` | Policy bucket di `storage.objects` belum ada | migrasi `20261026_announcer_storage_fix.sql` |
+| Tombol tambah (CREATE) hilang setelah ada data | Tombol hanya dirender di empty-state | halaman dashboard terkait (pindah ke toolbar) |
+| Tab/fitur tidak bisa dibuka sama sekali | `setState` untuk tab tidak pernah dipanggil | halaman dashboard terkait |
+| Tabel agenda TV tidak terbaca | Teks transparan di atas latar gelap | `components/AgendaTable.tsx` (tema terang) |
+
+### Cara membedakan error RLS storage vs RLS tabel
+
+- **RLS storage**: gagal **saat upload**, pesan **tidak** menyebut nama tabel -> policy `storage.objects` untuk bucket tersebut.
+- **RLS tabel**: file sudah ter-upload, gagal saat `insert`, pesan menyebut tabelnya (mis. `announcements`) -> periksa role/bidang user.
+
+### Setelah mengubah CSP atau kode player
+
+Header CSP dan bundle JS di-cache browser. Wajib **restart server/redeploy** lalu **hard refresh** di TV (`Ctrl+Shift+R` atau tombol **Lepas pasangan**) agar perubahan berlaku.
+

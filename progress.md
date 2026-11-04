@@ -451,4 +451,32 @@ signage/
 - **Pelajaran:** kalau user melaporkan tampilan konten "di aplikasi", cek dulu komponen renderer yang dipakai player (`SlideStage` -> `AgendaTable`), bukan hanya halaman editornya.
 - **Build:** OK - **Lint:** 34 problems (baseline, tidak ada masalah baru)
 
+---
+
+### [2026-10-26] DOCS: Sinkronisasi README.md + aturan maintenance di AGENTS.md
+
+- **Status:** Selesai (build hijau, lint baseline tetap 34)
+- **Tujuan:** Menyelaraskan dokumentasi dengan kondisi kode aktual, dan menjadikan AGENTS.md sebagai aturan wajib bagi AI agent dalam maintenance.
+- **Verifikasi fakta (bukan asumsi) sebelum menulis:**
+  - Migrasi aktual: 5 file (termasuk `20261026_announcer_storage_fix.sql` yang belum tercantum di README).
+  - `useToast()` dipakai di 8 file: login, announcer, displays, media, playlists, playlists/[id], schedules, users.
+  - Heartbeat TV `25000` ms; ambang online 60000 ms; evaluasi jadwal pengumuman `5000` ms.
+  - **Temuan kritis:** aturan lama AGENTS.md menyuruh memakai `bg-signal`/`text-danger`, tetapi kode aktual memakai palet Tailwind langsung (`emerald-600` 50x; token semantik 0x). Aturan itu sudah usang dan menyesatkan.
+- **README.md (37 baris berubah):**
+  - Bagian 2: tambah migrasi `20261026_announcer_storage_fix.sql`.
+  - Bagian 1: keterangan folder migrations (5 file).
+  - Bagian 6: tambah fitur **konten tabel** (tema terang oleh `AgendaTable.tsx`), **toast notification**, dan **pengumuman suara dua mode**.
+  - Bagian 7: tambah **RLS Storage terpisah dari RLS tabel**.
+  - Bagian 9: catatan baseline lint 34 + daftar larangan regresi (crossfade, timer, CSP, tema tabel) + aturan tombol CREATE permanen.
+  - **Bagian 10 (baru): Pemecahan masalah** - tabel gejala -> penyebab -> lokasi perbaikan (7 baris), cara membedakan RLS storage vs RLS tabel, dan kewajiban hard refresh setelah ubah CSP/player.
+- **AGENTS.md (55 baris berubah) - bagian baru:**
+  1. **Koreksi aturan warna:** palet Tailwind (emerald/slate/rose), token semantik tidak dipakai lagi, kontras WCAG AA minimum, larangan teks transparan di latar gelap.
+  2. **RLS Storage** (aturan keamanan #5-#6): setiap bucket wajib 3 policy; error tanpa nama tabel = storage.
+  3. **Aturan pemutar TV** (7 poin): larangan menghidupkan crossfade opacity, mempersempit `media-src`, timer `advance()` tanpa syarat, mengembalikan tabel ke gelap, memasang `onError` fatal, menghapus workaround Audio Focus, dan kewajiban uji di TV sungguhan.
+  4. **Prosedur diagnosis wajib:** baca Console dulu, manfaatkan petunjuk pembeda gejala, berhenti menebak bila perbaikan tidak mengubah gejala, verifikasi dari kode nyata, + tabel **jebakan yang pernah terjadi** (7 pola).
+  5. **Aturan UI dashboard:** tombol CREATE permanen, setiap `useState` tab wajib punya pemanggil `setX`, hapus deklarasi yang tak terpakai, escape entity di JSX.
+  6. **Aturan toast:** setiap mutasi wajib `toast.success`/`toast.error` + `error.message`; `queueToast` untuk aksi lintas navigasi.
+  7. **Baseline lint 34** (11 errors, 23 warnings): tidak boleh naik, turunkan bila bisa, wajib dicatat di laporan.
+- **Tidak diubah:** seluruh kode aplikasi, isi progress.md sebelumnya, dan keputusan desain final yang sudah ada.
+- **Build:** OK - **Lint:** 34 problems (baseline, tidak ada masalah baru)
 _Terakhir diperbarui: 2026-10-26_
