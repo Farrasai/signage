@@ -429,4 +429,26 @@ signage/
 - **Pelajaran:** fitur yang "hilang" bisa jadi memang ada tapi hanya dirender kondisional. Cek dengan menghitung kemunculan setter state — `setX` yang tidak pernah dipanggil menandakan UI-nya mati.
 - **Build:** OK - **Lint:** 34 problems (baseline turun 1 karena `setActiveTab` kini terpakai)
 
+---
+
+### [2026-10-26] REDESIGN: Tabel agenda TV jadi terang & bold (mudah dibaca)
+
+- **Status:** Selesai (build hijau, lint baseline tetap 34)
+- **Permintaan user:** Tabel pada fitur media jenis "Tabel" berlatar hitam dan gelap, sulit dilihat. Minta warna cerah + isi tabel bold.
+- **Lokasi sebenarnya:** BUKAN di `app/dashboard/media/page.tsx`. Tabel hitam yang dilihat user dirender oleh `components/AgendaTable.tsx` (dipakai player TV via `SlideStage`). Editor di dashboard sudah tema terang sejak awal.
+- **Kondisi lama (masalah keterbacaan):**
+  - Background `#0a0c10` (hitam pekat).
+  - Header kolom `bg-[#ff6a3d]/15` + teks `#ff6a3d` -> oranye transparan di atas hitam, paling sulit dibaca.
+  - Isi sel `text-white/90` tanpa bold.
+  - Zebra `bg-white/[0.03]` nyaris tak terlihat sehingga baris menyatu.
+- **Tema baru (Opsi A - terang bersih):**
+  - Background layar `bg-white`; judul `text-slate-900 font-bold`.
+  - Header kolom `bg-emerald-600` solid + `text-white font-bold` + border bawah `border-emerald-700`.
+  - Isi sel `text-slate-900 font-bold` (kontras ~17:1).
+  - Zebra baris `bg-emerald-50` / `bg-white`; border `border-slate-200`.
+- **Kontras (WCAG):** header emerald-600 + teks putih ~5.5:1 (lolos AA); sel slate-900 di atas putih ~17:1.
+- **Tidak diubah:** `sanitizeText()` tetap dipakai (XSS), `sizingFor()` auto-sizing font per jumlah baris tetap, layout `h-full w-full flex-col` tetap memenuhi layar TV, serta `EditMediaModal.tsx` dan `dashboard/media/page.tsx` tidak disentuh.
+- **Pelajaran:** kalau user melaporkan tampilan konten "di aplikasi", cek dulu komponen renderer yang dipakai player (`SlideStage` -> `AgendaTable`), bukan hanya halaman editornya.
+- **Build:** OK - **Lint:** 34 problems (baseline, tidak ada masalah baru)
+
 _Terakhir diperbarui: 2026-10-26_

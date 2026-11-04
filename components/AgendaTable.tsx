@@ -1,4 +1,4 @@
-﻿import type { TableContent } from "@/lib/types";
+import type { TableContent } from "@/lib/types";
 import { sanitizeText } from "@/lib/sanitize";
 
 /** Ukuran font & padding otomatis menyesuaikan jumlah baris agar tetap terbaca dari jarak jauh. */
@@ -9,24 +9,34 @@ function sizingFor(rowCount: number) {
   return { fontSize: "0.9rem", pad: "0.45rem 0.75rem" };
 }
 
+/**
+ * Tabel agenda untuk layar TV.
+ *
+ * Tema TERANG sengaja dipilih (dulu hitam pekat #0a0c10 dengan header oranye
+ * transparan) karena sulit dibaca dari jarak jauh:
+ * - Background putih + isi sel slate-900 BOLD -> kontras ~17:1.
+ * - Header emerald-600 solid + teks putih BOLD -> kontras ~5.5:1 (WCAG AA).
+ * - Zebra emerald-50 agar batas antarbaris terlihat tanpa garis berat.
+ * Jangan dikembalikan ke latar gelap tanpa menguji ulang di TV.
+ */
 export default function AgendaTable({ title, columns, rows }: TableContent) {
   const { fontSize, pad } = sizingFor(rows.length || 1);
 
   return (
-    <div className="flex h-full w-full flex-col bg-[#0a0c10] px-8 py-8 sm:px-16 sm:py-12">
+    <div className="flex h-full w-full flex-col bg-white px-8 py-8 sm:px-16 sm:py-12">
       {title && (
-        <h1 className="mb-6 shrink-0 text-3xl font-semibold text-white sm:text-5xl">
+        <h1 className="mb-6 shrink-0 text-3xl font-bold text-slate-900 sm:text-5xl">
           {sanitizeText(title)}
         </h1>
       )}
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200">
         <table className="w-full border-collapse" style={{ fontSize }}>
           <thead>
             <tr>
               {columns.map((col, i) => (
                 <th
                   key={i}
-                  className="sticky top-0 border-b border-white/10 bg-[#ff6a3d]/15 text-left font-semibold text-[#ff6a3d]"
+                  className="sticky top-0 border-b-2 border-emerald-700 bg-emerald-600 text-left font-bold text-white"
                   style={{ padding: pad }}
                 >
                   {sanitizeText(col)}
@@ -36,11 +46,11 @@ export default function AgendaTable({ title, columns, rows }: TableContent) {
           </thead>
           <tbody>
             {rows.map((row, ri) => (
-              <tr key={ri} className={ri % 2 === 0 ? "bg-white/[0.03]" : ""}>
+              <tr key={ri} className={ri % 2 === 0 ? "bg-emerald-50" : "bg-white"}>
                 {columns.map((_, ci) => (
                   <td
                     key={ci}
-                    className="border-b border-white/5 align-top text-white/90"
+                    className="border-b border-slate-200 align-top font-bold text-slate-900"
                     style={{ padding: pad }}
                   >
                     {sanitizeText(row[ci] ?? "")}
