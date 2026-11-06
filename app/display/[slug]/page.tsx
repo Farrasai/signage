@@ -82,17 +82,17 @@ export default function DisplayPlayerPage() {
   // ---------- Heartbeat so the dashboard knows this screen is online ----------
   useEffect(() => {
     if (!display) return;
+    // TV anonim TIDAK punya izin UPDATE langsung ke tabel displays (lihat migrasi
+    // 20261027_heartbeat_rpc.sql). Heartbeat ditulis lewat RPC SECURITY DEFINER
+    // yang hanya menyentuh kolom last_seen.
     const beat = async () => {
-      await supabase
-        .from("displays")
-        .update({ last_seen: new Date().toISOString() })
-        .eq("id", display.id);
+      await supabase.rpc("touch_display", { input_slug: slug });
     };
     beat();
     const id = setInterval(beat, 25000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [display?.id]);
+  }, [slug, display?.id]);
 
   // ---------- Schedules: fetched on load, refreshed periodically ----------
   const refreshSchedules = useCallback(async () => {
@@ -184,7 +184,8 @@ export default function DisplayPlayerPage() {
           }
           if (cmd.command === "next") advance();
           if (cmd.command === "prev") goPrev();
-          await supabase.from("remote_commands").update({ executed: true }).eq("id", cmd.id);
+          // ACK lewat RPC (anon tidak boleh UPDATE tabel secara langsung).
+          await supabase.rpc("ack_remote_command", { input_id: cmd.id });
         }
       )
       .subscribe();

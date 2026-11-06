@@ -11,16 +11,18 @@ Referensi cepat sebelum mengubah kode. Detail lengkap ada di `PRD-Siaran-Digital
 
 ## Aturan keamanan — JANGAN DILANGGAR
 1. **`display_pairing_codes` tidak boleh punya policy SELECT untuk anon/public.** Kode PIN hanya boleh ditukar lewat RPC `redeem_pairing_code()` (`SECURITY DEFINER`). Kalau ada yang minta "biar gampang, select langsung aja" — tolak, jelaskan risikonya (anon key publik/ter-embed di client).
-2. Semua tabel konten (`displays`, `media`, `playlists`, dst.) boleh `SELECT` publik (`using (true)`) karena player TV tidak login — tapi `INSERT/UPDATE/DELETE` konten **hanya untuk role `authenticated`**.
-3. `emergency_notice` cuma bisa di-update oleh authenticated. Jangan tambahkan cara bagi TV/anon untuk menutup pengumuman darurat — penutupan **hanya lewat dashboard admin**, ini keputusan produk yang disengaja, bukan lupa dibuat.
-4. Setiap migrasi baru wajib idempotent (`drop policy if exists` → `create policy`, `create table if not exists`) dan ditaruh di `supabase/migrations/`, plus disinkronkan ke `supabase/schema.sql` (skema referensi instalasi baru).
-5. **RLS Storage BUKAN RLS tabel.** Policy pada tabel tidak berlaku untuk file. Setiap bucket wajib punya 3 policy sendiri di `storage.objects`: `SELECT` publik (player TV anonim), `INSERT` dan `DELETE` untuk `authenticated`. Error `new row violates row-level security policy` **tanpa nama tabel** = gagal di `storage.objects`, bukan tabel. Ini pernah terjadi pada bucket `announcer` (lihat migrasi `20261026_announcer_storage_fix.sql`).
-6. Bucket yang dipakai: `media` (foto/video) dan `announcer` (audio pengumuman). Keduanya `public = true` karena player TV membaca tanpa login.
+2. **Anon TIDAK boleh punya policy `UPDATE` pada tabel apa pun.** Player TV hanya butuh menulis dua kolom: `displays.last_seen` (heartbeat) dan `remote_commands.executed` (ACK). Keduanya lewat RPC `SECURITY DEFINER` — `touch_display()` dan `ack_remote_command()`. Jangan pernah menghidupkan lagi `public update displays using (true)`: anon key ter-embed di bundle TV, jadi siapa pun bisa mengubah `default_playlist_id`/`marquee_text` semua layar lewat DevTools. Lihat migrasi `20261027_heartbeat_rpc.sql`.
+3. Semua tabel konten (`displays`, `media`, `playlists`, dst.) boleh `SELECT` publik (`using (true)`) karena player TV tidak login — tapi `INSERT/UPDATE/DELETE` konten **hanya untuk role `authenticated`**.
+4. `emergency_notice` cuma bisa di-update oleh authenticated. Jangan tambahkan cara bagi TV/anon untuk menutup pengumuman darurat — penutupan **hanya lewat dashboard admin**, ini keputusan produk yang disengaja, bukan lupa dibuat.
+5. Setiap migrasi baru wajib idempotent (`drop policy if exists` → `create policy`, `create table if not exists`) dan ditaruh di `supabase/migrations/`, plus disinkronkan ke `supabase/schema.sql` (skema referensi instalasi baru).
+6. **RLS Storage BUKAN RLS tabel.** Policy pada tabel tidak berlaku untuk file. Setiap bucket wajib punya 3 policy sendiri di `storage.objects`: `SELECT` publik (player TV anonim), `INSERT` dan `DELETE` untuk `authenticated`. Error `new row violates row-level security policy` **tanpa nama tabel** = gagal di `storage.objects`, bukan tabel. Ini pernah terjadi pada bucket `announcer` (lihat migrasi `20261026_announcer_storage_fix.sql`).
+7. Bucket yang dipakai: `media` (foto/video) dan `announcer` (audio pengumuman). Keduanya `public = true` karena player TV membaca tanpa login.
 
 ## Konvensi yang gampang salah taruh file
 - `app/display/page.tsx` = halaman publik pairing PIN. `app/display/[slug]/page.tsx` = player fullscreen TV. **Dua file berbeda, jangan tertukar** (sudah pernah kejadian).
 - Folder `[slug]` wajib pakai tanda kurung siku literal — kalau di-extract dari zip/upload manual dan kurungnya hilang, routing gagal total tapi tidak error saat build.
 - Komponen `AgendaTable.tsx`, `EmergencyOverlay.tsx`, `SlideStage.tsx` dipakai bersama oleh player DAN preview dashboard — jangan duplikasi logic render, edit di satu tempat.
+- **Halaman dashboard besar wajib dipecah.** `app/dashboard/announcer/page.tsx` dan `app/dashboard/media/page.tsx` sengaja tipis (±200–520 baris) sebagai orchestrator; markup ada di `components/announcer/` dan `components/media/`. Jangan menumpuk JSX baru kembali ke `page.tsx` — tambahkan komponen di folder masing-masing. Batas praktis: **jangan biarkan satu file melewati ~600 baris**.
 
 
 ## Aturan pemutar TV — JANGAN DIUBAH TANPA UJI DI PERANGKAT
@@ -66,7 +68,7 @@ npx eslint . --max-warnings=999
 ```
 Build dan lint harus bersih tanpa error sebelum menyerahkan perubahan.
 
-**Baseline lint repo saat ini: 34 problems (11 errors, 23 warnings).** Aturan:
+**Baseline lint repo saat ini: 20 problems (9 errors, 11 warnings).** Aturan:
 - Jumlah problems **tidak boleh naik**. Kalau menambah error baru, perbaiki sebelum menyerahkan.
 - Turunkan bila memungkinkan (mis. menghapus deklarasi yang tidak terpakai setelah refactor).
 - **Catat perubahan baseline di laporan akhir** agar tidak dikira regresi.

@@ -1,34 +1,45 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Announcement, AnnouncerItem, DayOfWeek, Display } from "@/lib/types";
-import { DAYS } from "@/lib/types";
 import { sanitizeText } from "@/lib/sanitize";
-import Modal from "@/components/Modal";
-import Pagination from "@/components/Pagination";
-import StatusDot from "@/components/StatusDot";
 import { useToast } from "@/lib/toast";
+import AnnouncerToolbar from "@/components/announcer/AnnouncerToolbar";
+import ScheduleTable from "@/components/announcer/ScheduleTable";
+import ScheduleFormModal, { type ScheduleFormState } from "@/components/announcer/ScheduleFormModal";
+import DeleteScheduleModal from "@/components/announcer/DeleteScheduleModal";
+import QueueList from "@/components/announcer/QueueList";
+import BroadcastModal, { type BroadcastFormState } from "@/components/announcer/BroadcastModal";
+import { getStoragePath } from "@/components/announcer/utils";
+import type { TabMode } from "@/components/announcer/types";
 
-function getStoragePath(raw: string | null): string | null {
-  try {
-    const u = raw || "";
-    const k = "/announcer/";
-    const i = u.indexOf(k);
-    if (i >= 0) return decodeURIComponent(u.slice(i + k.length).split("?")[0]);
-    return null;
-  } catch {
-    return null;
-  }
-}
+const EMPTY_SCHEDULE_FORM: ScheduleFormState = {
+  label: "Pengumuman",
+  time: "08:00",
+  days: new Set(),
+  repeat: 1,
+  targetMode: "all",
+  selectedDisplays: new Set(),
+  file: null,
+  enabled: true,
+  saving: false,
+  error: null,
+};
 
-type TabMode = "schedules" | "broadcast";
+const EMPTY_BROADCAST_FORM: BroadcastFormState = {
+  label: "Pengumuman Siaran Langsung",
+  repeat: 1,
+  targetMode: "all",
+  selectedDisplays: new Set(),
+  file: null,
+  uploading: false,
+  error: null,
+};
 
 export default function AnnouncerPage() {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<TabMode>("schedules");
-  const [annPage, setAnnPage] = useState(1);
-  const [queuePage, setQueuePage] = useState(1);
   const [displays, setDisplays] = useState<Display[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,18 +48,7 @@ export default function AnnouncerPage() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Announcement | null>(null);
   const [confirmDeleteSchedule, setConfirmDeleteSchedule] = useState<Announcement | null>(null);
-
-  // Form Schedule State
-  const [schedLabel, setSchedLabel] = useState("Pengumuman");
-  const [schedTime, setSchedTime] = useState("08:00");
-  const [schedDays, setSchedDays] = useState<Set<DayOfWeek>>(new Set());
-  const [schedRepeat, setSchedRepeat] = useState<1 | 2 | 3>(1);
-  const [schedTargetMode, setSchedTargetMode] = useState<"all" | "specific">("all");
-  const [schedSelectedDisplays, setSchedSelectedDisplays] = useState<Set<string>>(new Set());
-  const [schedFile, setSchedFile] = useState<File | null>(null);
-  const [schedEnabled, setSchedEnabled] = useState(true);
-  const [schedSaving, setSchedSaving] = useState(false);
-  const [schedError, setSchedError] = useState<string | null>(null);
+  const [schedForm, setSchedForm] = useState<ScheduleFormState>(EMPTY_SCHEDULE_FORM);
   const schedFileInputRef = useRef<HTMLInputElement>(null);
 
   // Audio Preview State
@@ -58,13 +58,7 @@ export default function AnnouncerPage() {
   // ---------- Broadcast & Queue State ----------
   const [queue, setQueue] = useState<AnnouncerItem[]>([]);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
-  const [broadcastLabel, setBroadcastLabel] = useState("Pengumuman Siaran Langsung");
-  const [broadcastRepeat, setBroadcastRepeat] = useState<1 | 2 | 3>(1);
-  const [broadcastTargetMode, setBroadcastTargetMode] = useState<"all" | "specific">("all");
-  const [broadcastSelectedDisplays, setBroadcastSelectedDisplays] = useState<Set<string>>(new Set());
-  const [broadcastFile, setBroadcastFile] = useState<File | null>(null);
-  const [broadcastUploading, setBroadcastUploading] = useState(false);
-  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [broadcastForm, setBroadcastForm] = useState<BroadcastFormState>(EMPTY_BROADCAST_FORM);
   const broadcastFileInputRef = useRef<HTMLInputElement>(null);
 
   // ---------- Load Data & Realtime ----------
@@ -187,33 +181,60 @@ export default function AnnouncerPage() {
     toast.success(nextVal ? "Pengumuman diaktifkan." : "Pengumuman dinonaktifkan.");
   }
 
+  // ---------- Form helpers ----------
+  function patchSchedForm(patch: Partial<ScheduleFormState>) {
+    setSchedForm((prev) => ({ ...prev, ...patch }));
+  }
+
+  function patchBroadcastForm(patch: Partial<BroadcastFormState>) {
+    setBroadcastForm((prev) => ({ ...prev, ...patch }));
+  }
+
+  function toggleSchedDay(day: DayOfWeek) {
+    setSchedForm((prev) => {
+      const next = new Set(prev.days);
+      if (next.has(day)) next.delete(day);
+      else next.add(day);
+      return { ...prev, days: next };
+    });
+  }
+
+  function toggleSetValue(key: "selectedDisplays", id: string, scope: "sched" | "broadcast") {
+    const apply = (prev: Set<string>) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    };
+    if (scope === "sched") {
+      setSchedForm((prev) => ({ ...prev, [key]: apply(prev[key]) }));
+    } else {
+      setBroadcastForm((prev) => ({ ...prev, [key]: apply(prev[key]) }));
+    }
+  }
+
   // ---------- Open Create / Edit Schedule Modal ----------
   function openAddScheduleModal() {
     setEditingSchedule(null);
-    setSchedLabel("Pengumuman");
-    setSchedTime("08:00");
-    setSchedDays(new Set());
-    setSchedRepeat(1);
-    setSchedTargetMode("all");
-    setSchedSelectedDisplays(new Set());
-    setSchedFile(null);
-    setSchedEnabled(true);
-    setSchedError(null);
+    setSchedForm({ ...EMPTY_SCHEDULE_FORM, days: new Set(), selectedDisplays: new Set() });
     if (schedFileInputRef.current) schedFileInputRef.current.value = "";
     setShowScheduleModal(true);
   }
 
   function openEditScheduleModal(item: Announcement) {
     setEditingSchedule(item);
-    setSchedLabel(item.label);
-    setSchedTime(item.time.slice(0, 5));
-    setSchedDays(new Set(item.days_of_week));
-    setSchedRepeat(item.repeat_count as 1 | 2 | 3);
-    setSchedTargetMode(item.target_display_ids.length === 0 ? "all" : "specific");
-    setSchedSelectedDisplays(new Set(item.target_display_ids));
-    setSchedFile(null);
-    setSchedEnabled(item.is_enabled);
-    setSchedError(null);
+    setSchedForm({
+      label: item.label,
+      time: item.time.slice(0, 5),
+      days: new Set(item.days_of_week),
+      repeat: item.repeat_count as 1 | 2 | 3,
+      targetMode: item.target_display_ids.length === 0 ? "all" : "specific",
+      selectedDisplays: new Set(item.target_display_ids),
+      file: null,
+      enabled: item.is_enabled,
+      saving: false,
+      error: null,
+    });
     if (schedFileInputRef.current) schedFileInputRef.current.value = "";
     setShowScheduleModal(true);
   }
@@ -221,12 +242,7 @@ export default function AnnouncerPage() {
   // ---------- Open Broadcast Modal (siaran langsung) ----------
   // Tanpa ini, modal broadcast tidak pernah bisa dibuka dari UI.
   function openBroadcastModal() {
-    setBroadcastLabel("Pengumuman Siaran Langsung");
-    setBroadcastRepeat(1);
-    setBroadcastTargetMode("all");
-    setBroadcastSelectedDisplays(new Set());
-    setBroadcastFile(null);
-    setBroadcastError(null);
+    setBroadcastForm({ ...EMPTY_BROADCAST_FORM, selectedDisplays: new Set() });
     if (broadcastFileInputRef.current) broadcastFileInputRef.current.value = "";
     setShowBroadcastModal(true);
   }
@@ -234,78 +250,75 @@ export default function AnnouncerPage() {
   // ---------- Save Schedule (Create or Update) ----------
   async function handleSaveSchedule(e: React.FormEvent) {
     e.preventDefault();
-    setSchedError(null);
+    patchSchedForm({ error: null });
 
-    if (!schedLabel.trim()) {
-      setSchedError("Label pengumuman wajib diisi.");
+    if (!schedForm.label.trim()) {
+      patchSchedForm({ error: "Label pengumuman wajib diisi." });
       return;
     }
-    if (!schedTime) {
-      setSchedError("Waktu tayang wajib diisi.");
+    if (!schedForm.time) {
+      patchSchedForm({ error: "Waktu tayang wajib diisi." });
       return;
     }
-    if (!editingSchedule && !schedFile) {
-      setSchedError("Pilih file audio terlebih dahulu.");
+    if (!editingSchedule && !schedForm.file) {
+      patchSchedForm({ error: "Pilih file audio terlebih dahulu." });
       return;
     }
-    if (schedTargetMode === "specific" && schedSelectedDisplays.size === 0) {
-      setSchedError("Pilih minimal satu layar atau gunakan opsi 'Semua layar'.");
+    if (schedForm.targetMode === "specific" && schedForm.selectedDisplays.size === 0) {
+      patchSchedForm({ error: "Pilih minimal satu layar atau gunakan opsi 'Semua layar'." });
       return;
     }
 
-    setSchedSaving(true);
+    patchSchedForm({ saving: true });
     const supabase = createClient();
     let audioUrl = editingSchedule ? editingSchedule.audio_url : "";
     let newStoragePath: string | null = null;
     let oldStoragePathToDelete: string | null = null;
 
     // Upload audio jika ada file baru
-    if (schedFile) {
-      const path = `${crypto.randomUUID()}-${schedFile.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
+    if (schedForm.file) {
+      const path = `${crypto.randomUUID()}-${schedForm.file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
       const { error: uploadError } = await supabase.storage
         .from("announcer")
-        .upload(path, schedFile, { cacheControl: "31536000", upsert: false });
+        .upload(path, schedForm.file, { cacheControl: "31536000", upsert: false });
 
       if (uploadError) {
-        setSchedError(`Gagal mengunggah file audio: ${uploadError.message}`);
-        setSchedSaving(false);
+        patchSchedForm({ error: `Gagal mengunggah file audio: ${uploadError.message}`, saving: false });
         return;
       }
 
       const { data: pub } = supabase.storage.from("announcer").getPublicUrl(path);
       audioUrl = pub.publicUrl;
       newStoragePath = path;
-      // jangan hapus lama dulu — tunggu DB sukses (trash-safe)
+      // jangan hapus lama dulu â€” tunggu DB sukses (trash-safe)
       if (editingSchedule) {
         oldStoragePathToDelete = (editingSchedule.storage_path as string | null) ?? getStoragePath(editingSchedule.audio_url);
       }
       if (!audioUrl) {
         // safety: jika getPublicUrl gagal, rollback upload
         if (newStoragePath) await supabase.storage.from("announcer").remove([newStoragePath]);
-        setSchedError("Gagal mendapatkan URL publik audio.");
-        setSchedSaving(false);
+        patchSchedForm({ error: "Gagal mendapatkan URL publik audio.", saving: false });
         return;
       }
     } else if (editingSchedule) {
-      // tidak ganti file — pertahankan storage_path lama
+      // tidak ganti file â€” pertahankan storage_path lama
       newStoragePath = (editingSchedule.storage_path as string | null) ?? getStoragePath(editingSchedule.audio_url);
     }
 
     const payload: Record<string, unknown> = {
-      label: sanitizeText(schedLabel.trim()).slice(0, 100),
+      label: sanitizeText(schedForm.label.trim()).slice(0, 100),
       audio_url: audioUrl,
       storage_path: newStoragePath,
-      time: schedTime,
-      days_of_week: Array.from(schedDays),
-      repeat_count: schedRepeat,
-      target_display_ids: schedTargetMode === "all" ? [] : Array.from(schedSelectedDisplays),
-      is_enabled: schedEnabled,
+      time: schedForm.time,
+      days_of_week: Array.from(schedForm.days),
+      repeat_count: schedForm.repeat,
+      target_display_ids: schedForm.targetMode === "all" ? [] : Array.from(schedForm.selectedDisplays),
+      is_enabled: schedForm.enabled,
     };
 
     if (!payload.audio_url || (payload.audio_url as string).trim() === "") {
       if (newStoragePath) await supabase.storage.from("announcer").remove([newStoragePath]);
-      setSchedError("Audio URL tidak boleh kosong.");
-      setSchedSaving(false);
+      patchSchedForm({ error: "Audio URL tidak boleh kosong.", saving: false });
       return;
     }
 
@@ -320,9 +333,8 @@ export default function AnnouncerPage() {
         if (newStoragePath && newStoragePath !== (editingSchedule.storage_path as string | null)) {
           await supabase.storage.from("announcer").remove([newStoragePath]);
         }
-        setSchedError(`Gagal memperbarui: ${updateError.message}`);
+        patchSchedForm({ error: `Gagal memperbarui: ${updateError.message}`, saving: false });
         toast.error(`Gagal memperbarui pengumuman: ${updateError.message}`);
-        setSchedSaving(false);
         return;
       }
       // sukses: baru hapus file lama
@@ -333,14 +345,13 @@ export default function AnnouncerPage() {
       const { error: insertError } = await supabase.from("announcements").insert(payload);
       if (insertError) {
         if (newStoragePath) await supabase.storage.from("announcer").remove([newStoragePath]);
-        setSchedError(`Gagal menyimpan: ${insertError.message}`);
+        patchSchedForm({ error: `Gagal menyimpan: ${insertError.message}`, saving: false });
         toast.error(`Gagal menyimpan pengumuman: ${insertError.message}`);
-        setSchedSaving(false);
         return;
       }
     }
 
-    setSchedSaving(false);
+    patchSchedForm({ saving: false });
     toast.success(editingSchedule ? "Perubahan pengumuman disimpan." : "Pengumuman berhasil dibuat.");
     setShowScheduleModal(false);
     load();
@@ -353,7 +364,7 @@ export default function AnnouncerPage() {
     const deletedLabel = confirmDeleteSchedule.label;
 
     const storagePath = (confirmDeleteSchedule.storage_path as string | null) ?? getStoragePath(confirmDeleteSchedule.audio_url);
-    // hapus file dulu (best-effort) lalu row — delete row tidak tergantung storage
+    // hapus file dulu (best-effort) lalu row â€” delete row tidak tergantung storage
     if (storagePath) {
       await supabase.storage.from("announcer").remove([storagePath]);
     }
@@ -371,51 +382,51 @@ export default function AnnouncerPage() {
   // ---------- Broadcast Submit (Instant) ----------
   async function handleBroadcastSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setBroadcastError(null);
+    patchBroadcastForm({ error: null });
 
-    if (!broadcastFile) {
-      setBroadcastError("Pilih file audio siaran terlebih dahulu.");
+    if (!broadcastForm.file) {
+      patchBroadcastForm({ error: "Pilih file audio siaran terlebih dahulu." });
       return;
     }
-    if (broadcastTargetMode === "specific" && broadcastSelectedDisplays.size === 0) {
-      setBroadcastError("Pilih minimal satu layar atau gunakan opsi 'Semua layar'.");
+    if (broadcastForm.targetMode === "specific" && broadcastForm.selectedDisplays.size === 0) {
+      patchBroadcastForm({ error: "Pilih minimal satu layar atau gunakan opsi 'Semua layar'." });
       return;
     }
 
-    setBroadcastUploading(true);
+    patchBroadcastForm({ uploading: true });
     const supabase = createClient();
 
-    const path = `${crypto.randomUUID()}-${broadcastFile.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
+    const path = `${crypto.randomUUID()}-${broadcastForm.file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
     const { error: uploadError } = await supabase.storage
       .from("announcer")
-      .upload(path, broadcastFile, { cacheControl: "31536000", upsert: false });
+      .upload(path, broadcastForm.file, { cacheControl: "31536000", upsert: false });
 
     if (uploadError) {
-      setBroadcastError(`Gagal mengunggah file audio: ${uploadError.message}`);
-      setBroadcastUploading(false);
+      patchBroadcastForm({ error: `Gagal mengunggah file audio: ${uploadError.message}`, uploading: false });
       return;
     }
 
     const { data: pub } = supabase.storage.from("announcer").getPublicUrl(path);
     const { error: queueError } = await supabase.from("announcer_queue").insert({
-      label: sanitizeText(broadcastLabel.trim() || "Pengumuman").slice(0, 100),
+      label: sanitizeText(broadcastForm.label.trim() || "Pengumuman").slice(0, 100),
       audio_url: pub.publicUrl,
       storage_path: path,
       source_announcement_id: null,
-      repeat_count: broadcastRepeat,
-      target_display_ids: broadcastTargetMode === "all" ? [] : Array.from(broadcastSelectedDisplays),
+      repeat_count: broadcastForm.repeat,
+      target_display_ids:
+        broadcastForm.targetMode === "all" ? [] : Array.from(broadcastForm.selectedDisplays),
     });
 
-    setBroadcastUploading(false);
+    patchBroadcastForm({ uploading: false });
     if (queueError) {
       await supabase.storage.from("announcer").remove([path]);
-      setBroadcastError(`Gagal menyiarkan: ${queueError.message}`);
+      patchBroadcastForm({ error: `Gagal menyiarkan: ${queueError.message}` });
       toast.error(`Gagal menyiarkan pengumuman: ${queueError.message}`);
       return;
     }
     toast.success("Pengumuman siaran langsung berhasil dikirim ke antrean.");
     setShowBroadcastModal(false);
-    setBroadcastFile(null);
+    setBroadcastForm({ ...EMPTY_BROADCAST_FORM, selectedDisplays: new Set() });
     if (broadcastFileInputRef.current) broadcastFileInputRef.current.value = "";
   }
 
@@ -437,198 +448,28 @@ export default function AnnouncerPage() {
     }
     toast.success("Item antrean dibatalkan.");
   }
-
-  // Helper toggle day
-  function toggleDay(day: DayOfWeek) {
-    setSchedDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(day)) next.delete(day);
-      else next.add(day);
-      return next;
-    });
-  }
-
-  return (
+return (
     <div>
-      {/* Toolbar: tab switcher + tombol tambah permanen */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
-          <button
-            type="button"
-            data-testid="tab-schedules"
-            onClick={() => setActiveTab("schedules")}
-            aria-pressed={activeTab === "schedules"}
-            className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-sm transition-colors ${
-              activeTab === "schedules"
-                ? "bg-white font-medium text-slate-900 dark:bg-slate-900 dark:text-white"
-                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            }`}
-          >
-            Jadwal Pengumuman
-          </button>
-          <button
-            type="button"
-            data-testid="tab-broadcast"
-            onClick={() => setActiveTab("broadcast")}
-            aria-pressed={activeTab === "broadcast"}
-            className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-sm transition-colors ${
-              activeTab === "broadcast"
-                ? "bg-white font-medium text-slate-900 dark:bg-slate-900 dark:text-white"
-                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            }`}
-          >
-            Siaran Langsung
-          </button>
-        </div>
-
-        <button
-          type="button"
-          data-testid="add-schedule-announcement-button"
-          onClick={activeTab === "schedules" ? openAddScheduleModal : openBroadcastModal}
-          className="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-700"
-        >
-          {activeTab === "schedules" ? "+ Tambah Pengumuman" : "🎤 Mulai Siaran"}
-        </button>
-      </div>
+      <AnnouncerToolbar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onCreate={activeTab === "schedules" ? openAddScheduleModal : openBroadcastModal}
+      />
 
       {/* ================= TAB 1: PENGUMUMAN TERJADWAL ================= */}
       {activeTab === "schedules" && (
         <div className="space-y-4">
           <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            {loading ? (
-              <div className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">Memuat data jadwal...</div>
-            ) : announcements.length === 0 ? (
-              <div className="px-4 py-12 text-center">
-                <p className="text-base font-medium text-slate-900 dark:text-white">Belum ada jadwal pengumuman.</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Gunakan tombol &ldquo;+ Tambah Pengumuman&rdquo; di kanan atas untuk membuat pengumuman bersuara yang otomatis diputar pada jam dan hari tertentu.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400">
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Label & Pratinjau</th>
-                      <th className="px-4 py-3 font-medium">Jam Tayang</th>
-                      <th className="px-4 py-3 font-medium">Hari Aktif</th>
-                      <th className="px-4 py-3 font-medium">Target Layar</th>
-                      <th className="px-4 py-3 font-medium">Ulang</th>
-                      <th className="px-4 py-3 text-right font-medium">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {announcements.map((item) => {
-                      const isPlaying = previewAudioId === item.id;
-                      return (
-                        <tr key={item.id} className="transition-colors hover:bg-slate-100 dark:bg-slate-800/50">
-                          {/* Toggle Status */}
-                          <td className="px-4 py-3.5">
-                            <label className="relative inline-flex cursor-pointer items-center" title={item.is_enabled ? "Jadwal Aktif (klik untuk nonaktifkan)" : "Jadwal Nonaktif (klik untuk aktifkan)"}>
-                              <input
-                                type="checkbox"
-                                checked={item.is_enabled}
-                                onChange={() => handleToggleEnabled(item)}
-                                className="peer sr-only"
-                              />
-                              <div className="h-5 w-9 rounded-full bg-border peer-checked:bg-emerald-600 peer-focus:outline-none after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
-                            </label>
-                          </td>
-
-                          {/* Label & Audio Preview */}
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-2.5">
-                              <button
-                                onClick={() => togglePreviewAudio(item.id, item.audio_url)}
-                                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
-                                  isPlaying
-                                    ? "bg-emerald-600 text-white animate-pulse"
-                                    : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:border-emerald-500 hover:text-slate-900 dark:text-white"
-                                }`}
-                                title={isPlaying ? "Jeda pratinjau audio" : "Dengarkan audio"}
-                              >
-                                {isPlaying ? "⏸" : "▶"}
-                              </button>
-                              <span className="font-medium text-slate-900 dark:text-white">{item.label}</span>
-                            </div>
-                          </td>
-
-                          {/* Jam Tayang */}
-                          <td className="px-4 py-3.5">
-                            <span className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
-                              {item.time.slice(0, 5)}
-                            </span>
-                          </td>
-
-                          {/* Hari Aktif */}
-                          <td className="px-4 py-3.5">
-                            {item.days_of_week.length === 0 ? (
-                              <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
-                                Setiap hari
-                              </span>
-                            ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {item.days_of_week.map((day) => {
-                                  const dInfo = DAYS.find((d) => d.value === day);
-                                  return (
-                                    <span
-                                      key={day}
-                                      className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400"
-                                    >
-                                      {dInfo?.label ?? day}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Target Layar */}
-                          <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400">
-                            {item.target_display_ids.length === 0 ? (
-                              <span className="text-xs">Semua layar</span>
-                            ) : (
-                              <span className="text-xs">{item.target_display_ids.length} layar</span>
-                            )}
-                          </td>
-
-                          {/* Repeat Count */}
-                          <td className="px-4 py-3.5 text-xs text-slate-500 dark:text-slate-400">
-                            {item.repeat_count}x
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-4 py-3.5 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleTriggerNow(item)}
-                                className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:border-emerald-500 hover:text-slate-900 dark:text-white"
-                                title="Bunyikan sekarang ke layar TV tanpa menunggu jam jadwal"
-                              >
-                                ▶ Bunyikan
-                              </button>
-                              <button
-                                onClick={() => openEditScheduleModal(item)}
-                                className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:bg-slate-800 hover:text-slate-900 dark:text-white"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => setConfirmDeleteSchedule(item)}
-                                className="rounded-md border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:border-rose-400 hover:text-rose-600 dark:text-rose-400"
-                              >
-                                Hapus
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <ScheduleTable
+              announcements={announcements}
+              loading={loading}
+              previewAudioId={previewAudioId}
+              onToggleEnabled={handleToggleEnabled}
+              onTogglePreview={togglePreviewAudio}
+              onTriggerNow={handleTriggerNow}
+              onEdit={openEditScheduleModal}
+              onRequestDelete={setConfirmDeleteSchedule}
+            />
           </div>
         </div>
       )}
@@ -636,429 +477,47 @@ export default function AnnouncerPage() {
       {/* ================= TAB 2: SIARAN LANGSUNG ================= */}
       {activeTab === "broadcast" && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <div className="border-b border-slate-200 dark:border-slate-800 px-4 py-3">
-              <h2 className="text-sm font-medium">
-                Antrean Pemutaran di TV{queue.length > 0 && ` (${queue.length} item)`}
-              </h2>
-            </div>
-
-            {loading && (
-              <div className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Memuat antrean...</div>
-            )}
-
-            {!loading && queue.length === 0 && (
-              <div className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-                Tidak ada siaran suara yang sedang aktif atau mengantre.
-              </div>
-            )}
-
-            {!loading && queue.length > 0 && (
-              <ul className="divide-y divide-border">
-                {queue.map((item, idx) => (
-                  <li key={item.id} className="flex items-center gap-3 px-4 py-3">
-                    {idx === 0 ? (
-                      <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-red-500" title="Sedang diputar di TV" />
-                    ) : (
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-border" title="Menunggu giliran" />
-                    )}
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{item.label}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Diulang {item.repeat_count}x
-                        {item.target_display_ids.length > 0
-                          ? ` · ${item.target_display_ids.length} layar`
-                          : " · Semua layar"}
-                      </p>
-                    </div>
-
-                    {idx === 0 && (
-                      <span className="shrink-0 rounded-md bg-red-500/15 px-2 py-0.5 text-xs text-red-400">
-                        Diputar
-                      </span>
-                    )}
-
-                    <button
-                      onClick={() => handleCancelQueueItem(item)}
-                      className="shrink-0 text-xs text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:text-rose-400"
-                      title="Batalkan siaran ini dari antrean"
-                    >
-                      Batal
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <QueueList queue={queue} loading={loading} onCancel={handleCancelQueueItem} />
         </div>
       )}
 
       {/* ================= MODAL TAMBAH / EDIT JADWAL ================= */}
       {showScheduleModal && (
-        <Modal
-          title={editingSchedule ? "Edit Jadwal Pengumuman" : "Tambah Jadwal Pengumuman"}
+        <ScheduleFormModal
+          editing={editingSchedule}
+          form={schedForm}
+          displays={displays}
+          fileInputRef={schedFileInputRef}
           onClose={() => setShowScheduleModal(false)}
-        >
-          <form onSubmit={handleSaveSchedule} className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Label pengumuman</label>
-              <input
-                data-testid="announcement-label-input"
-                value={schedLabel}
-                onChange={(e) => setSchedLabel(e.target.value)}
-                placeholder="Contoh: Bel Masuk Kerja / Pengumuman Layanan"
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
-              />
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Teks ini tampil pada badge 🎤 melayang di layar TV.</p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Waktu tayang</label>
-                <input
-                  type="time"
-                  value={schedTime}
-                  onChange={(e) => setSchedTime(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Jumlah pengulangan</label>
-                <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
-                  {([1, 2, 3] as const).map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setSchedRepeat(n)}
-                      className={`flex-1 rounded-lg py-1.5 text-sm ${
-                        schedRepeat === n ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
-                      }`}
-                    >
-                      {n}x
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Hari Aktif */}
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-sm text-slate-500 dark:text-slate-400">Hari tayang</label>
-                <button
-                  type="button"
-                  onClick={() => setSchedDays(schedDays.size === DAYS.length ? new Set() : new Set(DAYS.map((d) => d.value)))}
-                  className="text-xs text-emerald-600 hover:underline"
-                >
-                  {schedDays.size === DAYS.length ? "Hapus Pilihan (Setiap Hari)" : "Pilih Semua Hari"}
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {DAYS.map((d) => (
-                  <button
-                    key={d.value}
-                    type="button"
-                    onClick={() => toggleDay(d.value)}
-                    className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
-                      schedDays.has(d.value)
-                        ? "bg-emerald-600 text-white"
-                        : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-              {schedDays.size === 0 && (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Berlaku setiap hari (tidak ada batasan hari).</p>
-              )}
-            </div>
-
-            {/* Upload File Audio */}
-            <div>
-              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
-                {editingSchedule ? "File audio (kosongkan jika tidak ingin mengganti)" : "File audio (.mp3, .wav, .ogg)"}
-              </label>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 py-6 text-sm text-slate-500 dark:text-slate-400 hover:border-emerald-500/50">
-                {schedFile ? (
-                  <>
-                    <span className="text-base">🎵</span>
-                    <span className="font-medium text-slate-900 dark:text-white">{schedFile.name}</span>
-                    <span className="text-xs">{(schedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                  </>
-                ) : editingSchedule ? (
-                  <>
-                    <span>Audio tersimpan saat ini</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Klik untuk memilih file pengganti</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Klik untuk pilih file audio</span>
-                    <span className="text-xs">MP3, WAV, OGG</span>
-                  </>
-                )}
-                <input
-                  ref={schedFileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  className="hidden"
-                  onChange={(e) => setSchedFile(e.target.files?.[0] ?? null)}
-                  disabled={schedSaving}
-                />
-              </label>
-            </div>
-
-            {/* Target Layar */}
-            <div>
-              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Tayangkan ke</label>
-              <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
-                <button
-                  type="button"
-                  onClick={() => setSchedTargetMode("all")}
-                  className={`flex-1 rounded-lg py-1.5 text-sm ${
-                    schedTargetMode === "all" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  Semua layar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSchedTargetMode("specific")}
-                  className={`flex-1 rounded-lg py-1.5 text-sm ${
-                    schedTargetMode === "specific" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  Pilih layar
-                </button>
-              </div>
-
-              {schedTargetMode === "specific" && (
-                <div className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 p-2">
-                  {displays.length === 0 && (
-                    <p className="px-2 py-3 text-center text-xs text-slate-500 dark:text-slate-400">
-                      Belum ada layar terdaftar.
-                    </p>
-                  )}
-                  {displays.map((d) => (
-                    <label
-                      key={d.id}
-                      className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-white dark:bg-slate-900"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={schedSelectedDisplays.has(d.id)}
-                          onChange={() => {
-                            setSchedSelectedDisplays((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(d.id)) next.delete(d.id);
-                              else next.add(d.id);
-                              return next;
-                            });
-                          }}
-                          className="accent-emerald-600"
-                        />
-                        {d.name}
-                      </span>
-                      <StatusDot lastSeen={d.last_seen} />
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Switch Enable */}
-            <div className="flex items-center justify-between pt-2">
-              <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">Status jadwal</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Aktifkan pengumuman ini untuk diputar sesuai jadwal.</p>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={schedEnabled}
-                  onChange={(e) => setSchedEnabled(e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="h-5 w-9 rounded-full bg-border peer-checked:bg-emerald-600 peer-focus:outline-none after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
-              </label>
-            </div>
-
-            {schedError && <p data-testid="announcement-error" className="text-sm text-rose-600 dark:text-rose-400">{schedError}</p>}
-
-            <button
-              data-testid="announcement-submit"
-              type="submit"
-              disabled={schedSaving}
-              className="w-full rounded-lg bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-            >
-              {schedSaving ? "Menyimpan..." : editingSchedule ? "Simpan Perubahan" : "Buat Jadwal"}
-            </button>
-          </form>
-        </Modal>
+          onSubmit={handleSaveSchedule}
+          onChange={patchSchedForm}
+          onToggleDay={toggleSchedDay}
+          onToggleDisplay={(id) => toggleSetValue("selectedDisplays", id, "sched")}
+        />
       )}
 
       {/* ================= MODAL KONFIRMASI HAPUS JADWAL ================= */}
       {confirmDeleteSchedule && (
-        <Modal title="Hapus Jadwal Pengumuman" onClose={() => setConfirmDeleteSchedule(null)}>
-          <div className="space-y-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Apakah Anda yakin ingin menghapus jadwal pengumuman{" "}
-              <strong className="text-slate-900 dark:text-white">&ldquo;{confirmDeleteSchedule.label}&rdquo;</strong>?
-              File audio terkait juga akan dibersihkan dari penyimpanan.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteSchedule(null)}
-                className="rounded-md border border-slate-200 dark:border-slate-800 px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteSchedule}
-                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </Modal>
+        <DeleteScheduleModal
+          item={confirmDeleteSchedule}
+          onCancel={() => setConfirmDeleteSchedule(null)}
+          onConfirm={handleDeleteSchedule}
+        />
       )}
 
       {/* ================= MODAL TAMBAH SIARAN LANGSUNG ================= */}
       {showBroadcastModal && (
-        <Modal title="Mulai Siaran Suara Langsung" onClose={() => setShowBroadcastModal(false)}>
-          <form onSubmit={handleBroadcastSubmit} className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Label siaran</label>
-              <input
-                value={broadcastLabel}
-                onChange={(e) => setBroadcastLabel(e.target.value)}
-                placeholder="Contoh: Pengumuman Darurat Siang"
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">
-                File audio (.mp3, .wav, .ogg)
-              </label>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 py-6 text-sm text-slate-500 dark:text-slate-400 hover:border-emerald-500/50">
-                {broadcastFile ? (
-                  <>
-                    <span className="text-base">🎵</span>
-                    <span className="font-medium text-slate-900 dark:text-white">{broadcastFile.name}</span>
-                    <span className="text-xs">{(broadcastFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Klik untuk pilih file audio</span>
-                    <span className="text-xs">MP3, WAV, OGG</span>
-                  </>
-                )}
-                <input
-                  ref={broadcastFileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  className="hidden"
-                  onChange={(e) => setBroadcastFile(e.target.files?.[0] ?? null)}
-                  disabled={broadcastUploading}
-                />
-              </label>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Diulang</label>
-              <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
-                {([1, 2, 3] as const).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setBroadcastRepeat(n)}
-                    className={`flex-1 rounded-lg py-1.5 text-sm ${
-                      broadcastRepeat === n ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
-                    }`}
-                  >
-                    {n}x
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-slate-500 dark:text-slate-400">Tayangkan ke</label>
-              <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
-                <button
-                  type="button"
-                  onClick={() => setBroadcastTargetMode("all")}
-                  className={`flex-1 rounded-lg py-1.5 text-sm ${
-                    broadcastTargetMode === "all" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  Semua layar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBroadcastTargetMode("specific")}
-                  className={`flex-1 rounded-lg py-1.5 text-sm ${
-                    broadcastTargetMode === "specific" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  Pilih layar
-                </button>
-              </div>
-
-              {broadcastTargetMode === "specific" && (
-                <div className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 p-2">
-                  {displays.length === 0 && (
-                    <p className="px-2 py-3 text-center text-xs text-slate-500 dark:text-slate-400">
-                      Belum ada layar terdaftar.
-                    </p>
-                  )}
-                  {displays.map((d) => (
-                    <label
-                      key={d.id}
-                      className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-white dark:bg-slate-900"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={broadcastSelectedDisplays.has(d.id)}
-                          onChange={() => {
-                            setBroadcastSelectedDisplays((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(d.id)) next.delete(d.id);
-                              else next.add(d.id);
-                              return next;
-                            });
-                          }}
-                          className="accent-emerald-600"
-                        />
-                        {d.name}
-                      </span>
-                      <StatusDot lastSeen={d.last_seen} />
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {broadcastError && <p className="text-sm text-rose-600 dark:text-rose-400">{broadcastError}</p>}
-
-            <button
-              type="submit"
-              disabled={broadcastUploading}
-              className="w-full rounded-lg bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-            >
-              {broadcastUploading ? "Mengunggah..." : "🎤 Mulai Siaran Sekarang"}
-            </button>
-          </form>
-        </Modal>
+        <BroadcastModal
+          form={broadcastForm}
+          displays={displays}
+          fileInputRef={broadcastFileInputRef}
+          onClose={() => setShowBroadcastModal(false)}
+          onSubmit={handleBroadcastSubmit}
+          onChange={patchBroadcastForm}
+          onToggleDisplay={(id) => toggleSetValue("selectedDisplays", id, "broadcast")}
+        />
       )}
     </div>
   );
 }
+

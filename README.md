@@ -98,6 +98,7 @@ progress.md                       Riwayat task
    - `migrations/20261006_multirole.sql` — tabel `profiles`, kolom `owner_id`/`bidang`, RLS multi-role
    - `migrations/20261007_announcer_ownership.sql` — `storage_path` + `source_announcement_id`
    - `migrations/20261026_announcer_storage_fix.sql` - policy Storage bucket `announcer`: SELECT publik, INSERT/DELETE authenticated. Wajib dijalankan bila upload audio gagal dengan `new row violates row-level security policy`.
+   - `migrations/20261027_heartbeat_rpc.sql` — mencabut policy `update using (true)` untuk anon pada `displays` & `remote_commands`, lalu menambah RPC `touch_display` + `ack_remote_command`. **Wajib**; tanpa migrasi ini siapa pun bisa mengubah semua layar lewat anon key.
    - `fix_profiles_rls.sql` — perbaiki rekursi RLS pada `profiles`
 
    Semua migrasi idempotent (`if not exists` / `drop policy if exists`).
@@ -222,10 +223,13 @@ npm run lint     # eslint
 
 ## 7. Keamanan
 
-- **RLS multi-role**: player TV (anonim) hanya bisa `SELECT` konten dan memperbarui
-  `last_seen` pada baris layarnya sendiri. `INSERT/UPDATE/DELETE` konten dibatasi untuk
-  user terautentikasi, dan pada tabel ber-`owner_id`/`bidang` hanya pemilik, se-bidang,
-  atau admin. Tabel announcer, emergency, dan remote command: **admin only**.
+- **RLS multi-role**: player TV (anonim) hanya bisa `SELECT` konten; ia **tidak** punya
+  policy `UPDATE` pada tabel apa pun. Heartbeat (`displays.last_seen`) dan ACK perintah
+  remote (`remote_commands.executed`) ditulis lewat dua RPC `SECURITY DEFINER`
+  (`touch_display`, `ack_remote_command`) yang masing-masing hanya menyentuh satu kolom.
+  `INSERT/UPDATE/DELETE` konten dibatasi untuk user terautentikasi, dan pada tabel
+  ber-`owner_id`/`bidang` hanya pemilik, se-bidang, atau admin. Tabel announcer, emergency,
+  dan remote command: **admin only**.
 - **Pairing code**: tabel `display_pairing_codes` **tidak** punya policy `SELECT` untuk
   anon. Kode hanya bisa ditukar lewat RPC `redeem_pairing_code()` (`SECURITY DEFINER`),
   karena anon key ter-embed di client.
@@ -281,7 +285,7 @@ Detail aturan lengkap ada di `AGENTS.md`. Yang paling sering terlewat:
   oleh player **dan** preview dashboard — jangan duplikasi logic render.
 - Setiap migrasi baru harus idempotent, ditaruh di `supabase/migrations/`, dan
   disinkronkan ke `supabase/schema.sql`.
-- Sebelum menganggap selesai, jalankan `npm run build` dan `npx eslint . --max-warnings=999`. Baseline lint saat ini **34 problems** - jangan menambah.
+- Sebelum menganggap selesai, jalankan `npm run build` dan `npx eslint . --max-warnings=999`. Baseline lint saat ini **20 problems** - jangan menambah.
 - Jangan menghidupkan kembali crossfade opacity di `SlideStage.tsx`, memasang timer `advance()` tanpa syarat, mempersempit `media-src`, atau mengembalikan `AgendaTable` ke tema gelap. Semua itu sudah terbukti menimbulkan bug.
 - Tombol aksi (CREATE) wajib permanen di toolbar, bukan hanya di empty-state. Setiap `useState` untuk tab wajib punya pemanggil `setX` - kalau tidak, UI-nya mati.
 

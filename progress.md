@@ -7,6 +7,43 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-27] Security: Heartbeat via RPC + Refactor file >1.000 baris
+
+- **Status:** ✅ Selesai (build hijau 14 routes; lint **34 → 20 problems**)
+- **Tujuan:** Menutup lubang tulis anonim pada tabel `displays`, lalu memecah dua file terbesar agar bisa dirawat.
+
+#### (1) Migrasi `20261027_heartbeat_rpc.sql` — tutup RLS tulis anon
+- **Root cause:** `supabase/schema.sql:152` punya `create policy "public update displays" on displays for update using (true);` tanpa batasan kolom dan tanpa `to authenticated`. Grep membuktikan migrasi `20261006_multirole.sql` **tidak pernah** menghapusnya (satu-satunya kemunculan ada di `schema.sql`).
+- **Dampak nyata:** anon key Supabase ter-embed di bundle halaman TV, jadi siapa pun yang membuka DevTools di `/display/<slug>` bisa mengubah baris layar **mana pun** — `default_playlist_id` (ganti isi semua TV), `marquee_text` (tulis teks apa pun ke layar instansi), `is_paused`.
+- **Perbaikan:**
+  - `touch_display(input_slug text)` — RPC `SECURITY DEFINER`, satu-satunya jalur tulis `displays.last_seen`.
+  - `ack_remote_command(input_id uuid)` — RPC `SECURITY DEFINER`, menandai `remote_commands.executed`.
+  - `drop policy if exists "public update displays"` dan `"public update remote_commands"`.
+  - `revoke all ... from public` + `grant execute ... to anon, authenticated` (pola sama dengan `redeem_pairing_code`).
+- **File diubah:** `supabase/migrations/20261027_heartbeat_rpc.sql` (baru), `supabase/schema.sql` (policy dihapus, RPC ditambahkan, komentar diperbarui), `app/display/[slug]/page.tsx` (heartbeat & ACK pindah ke `.rpc()`, dependency efek jadi `[slug, display?.id]`).
+- **Tidak terpengaruh:** dashboard (`RemoteControls.tsx` update `is_paused`) tetap jalan sebagai `authenticated` lewat policy `auth update displays` dari migrasi multirole.
+- **Urutan deploy:** deploy kode **dulu**, baru jalankan migrasi (atau berdekatan). Jika migrasi dijalankan lebih dulu, heartbeat lama ditolak RLS dan layar tampak offline sampai kode baru aktif.
+
+#### (2) Refactor `app/dashboard/announcer/page.tsx` (1.064 → 523 baris)
+- Komponen baru di `components/announcer/`: `AnnouncerToolbar`, `ScheduleTable`, `ScheduleRow`, `ScheduleFormModal`, `ScheduleFormFields`, `DeleteScheduleModal`, `QueueList`, `BroadcastModal`, `DisplayPicker`, `utils.ts`, `types.ts`.
+- `DisplayPicker` menghapus **duplikasi** markup pemilih layar yang sebelumnya ditulis identik dua kali (form jadwal & form siaran).
+- Form dipekatkan jadi satu objek state (`ScheduleFormState`, `BroadcastFormState`) + helper `patchSchedForm` / `patchBroadcastForm` / `toggleSchedDay` / `toggleSetValue`.
+- Dead code dihapus: `import Pagination`, `annPage/setAnnPage`, `queuePage/setQueuePage` (**-5 warnings**).
+
+#### (3) Refactor `app/dashboard/media/page.tsx` (1.017 → 229 baris)
+- Komponen baru di `components/media/`: `constants.ts`, `MediaThumb`, `DurationInput`, `MediaToolbar`, `MediaGrid`, `MediaList`, `MediaEmptyStates`, `AddMediaModal`, `UploadTab`, `YoutubeTab`, `CdnTab`, `TableTab`, `useMediaForm.ts`.
+- `useMediaForm` memuat seluruh state + handler form tambah konten; modal di-mount lewat `AddMediaHost` agar state form bersih lagi tiap kali dibuka.
+- Dead code dihapus: `canEditOwner`, `import Pagination`, `useMemo`, `Profile`, `profile/setProfile`, `userId/setUserId` (**-6 warnings**).
+- **2 error diperbaiki:** `set-state-in-effect` pada pagination diganti clamp saat render (`safePage`) + reset `page` di handler search/filter (**-2 errors**).
+- Semua `data-testid` dipertahankan (`add-media-button`, `media-empty`, `media-card-*`, `edit-media-*`, `delete-media-*`, `tab-*`, `youtube-*`, `cdn-*`, `tab-schedules`, `tab-broadcast`, `add-schedule-announcement-button`, `announcement-label-input`, `announcement-error`, `announcement-submit`).
+
+#### Verifikasi
+- `npx tsc --noEmit` ✅ bersih
+- `npm run build` ✅ 14 routes
+- `npx eslint . --max-warnings=999` → **20 problems (9 errors, 11 warnings)**, turun 14 dari baseline 34. Sisa error semuanya pre-existing di file yang tidak disentuh (`displays`, `dashboard/page`, `playlists`, `schedules`, `users`, `display/page`, `DashboardShell`, dan `any` di `display/[slug]:367`).
+
+---
+
 ### [2026-10-16] Redesign UI — Migrasi ke Sistem Desain ABPEDNAS (antislop: during)
 
 - **Status:** ✅ Selesai
