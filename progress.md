@@ -7,6 +7,30 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-27] UI: Micro-interaction dashboard (card-lift, btn-press, modal-in)
+
+- **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)
+- **Tujuan:** Menambahkan micro-interaction pada area dashboard admin — **tanpa menyentuh player TV** yang harus tetap ringan (Android TV minim VRAM).
+- **Pendekatan:** terpusat, bukan ditempel 42 kali. Tiga utilitas CSS di `app/globals.css` + komponen bersama, sehingga konsisten dan mudah dirawat.
+- **`app/globals.css`** — tiga utilitas baru (dengan komentar tegas bahwa kelas ini **dilarang** dipakai di `SlideStage`/`AgendaTable`/`EmergencyOverlay`/`AnnouncerBadge`/`VideoDebugBadge`):
+  - `.card-lift` — `translateY(-3px)` + bayangan berlapis saat hover, `:active` jadi `-1px`. Transisi `200ms cubic-bezier(0.22, 1, 0.36, 1)`.
+  - `.btn-press` — `translateY(-1px)` saat hover, `translateY(0) scale(0.985)` saat klik. Transisi `120ms`.
+  - `.btn-icon` — panah/ikon bergeser `translateX(2px)` saat induk `.btn-press` di-hover.
+  - `.modal-in` + `@keyframes par-modal-in` — fade + naik 8px + scale 0.98 → 1, `180ms`.
+  - Semua dimatikan di `@media (prefers-reduced-motion: reduce)`.
+- **Komponen bersama (efek menyebar otomatis):**
+  - `components/Modal.tsx` — `modal-in` di panel (bukan backdrop, agar latar tidak ikut bergerak) → berlaku untuk **7 halaman**.
+  - `components/KpiCard.tsx` — `card-lift group` pada `Link`, `btn-icon` pada teks CTA → halaman Ringkasan.
+  - `components/announcer/QueueList.tsx`, `components/media/{MediaGrid,MediaList,MediaToolbar}.tsx`.
+- **Halaman:** `dashboard/page.tsx` (kartu layar, filter pill, Refresh, Salin URL, Buka Player, activity row), `displays`, `playlists`, `playlists/[id]`, `schedules`, `users`.
+- **Detail UX:** tombol "Salin URL" kini memberi konfirmasi visual (`bg-emerald-50 text-emerald-700`) saat `copiedId` cocok, bukan hanya ganti teks. Tombol Refresh memakai `<span className="btn-icon">↻</span>`, "Buka Player" memakai `↗`.
+- **Yang SENGAJA tidak dibuat:** stagger fade-in kartu (akan berkedip karena Ringkasan refresh tiap 15 detik), aksen garis emerald kiri kartu, dan ripple pada tombol — sesuai pilihan user.
+- **Verifikasi kebocoran:** grep `card-lift|btn-press|btn-icon|modal-in` pada `app/display/**`, `SlideStage`, `AgendaTable`, `EmergencyOverlay`, `AnnouncerBadge`, `VideoDebugBadge` → **0 hasil**. Player TV tidak terpengaruh.
+- **Sebaran akhir:** 12 file memakai utilitas ini (6 dashboard page + KpiCard, Modal, QueueList, MediaGrid, MediaList, MediaToolbar).
+- **Verifikasi:** `tsc` exit 0, `npm run build` Compiled successfully, `eslint` 20 problems (tidak naik).
+
+---
+
 ### [2026-10-27] REBRANDING: Siaran → Pariwara + favicon & logo
 
 - **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)

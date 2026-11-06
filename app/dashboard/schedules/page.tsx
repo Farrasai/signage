@@ -135,7 +135,7 @@ export default function SchedulesPage() {
           <div
             key={s.id}
             data-testid={`schedule-row-${s.id}`}
-            className="flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
+            className="card-lift flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
           >
             <div>
               <p className="font-bold text-slate-900 dark:text-white">

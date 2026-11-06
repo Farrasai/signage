@@ -130,7 +130,7 @@ export default function DisplaysPage() {
           const code = pairingCodes[d.id];
           const canEdit = !profile || canEditDisplay(profile, d);
           return (
-            <div key={d.id} data-testid={`display-row-${d.id}`} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm min-w-0 dark:border-slate-800 dark:bg-slate-900">
+            <div key={d.id} data-testid={`display-row-${d.id}`} className="card-lift overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm min-w-0 dark:border-slate-800 dark:bg-slate-900">
               <div className={`relative flex items-center justify-between px-4 py-3 ${online ? "emerald-wave-pattern text-white" : "emerald-wave-offline text-white"}`}>
                 <div className="relative min-w-0">
                   <input defaultValue={d.name} onBlur={(e)=>{ if(e.target.value.trim() && e.target.value!==d.name) updateDisplay(d.id,{name:e.target.value.trim()}); }} className="w-full max-w-xs bg-transparent font-extrabold text-white placeholder:text-white/60 outline-none" placeholder="Nama layar" disabled={!canEdit} title={canEdit?"":"Hanya pemilik bidang dapat mengedit"} />

@@ -23,7 +23,7 @@ export default function MediaGrid({
         <div
           key={m.id}
           data-testid={`media-card-${m.id}`}
-          className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          className="card-lift overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
         >
           <div className="relative flex h-44 items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800">
             <MediaThumb m={m} className="h-full w-full" />
@@ -41,14 +41,14 @@ export default function MediaGrid({
                 <button
                   data-testid={`edit-media-${m.id}`}
                   onClick={() => onEdit(m)}
-                  className="cursor-pointer rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                  className="cursor-pointer rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 btn-press hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                 >
                   Edit
                 </button>
                 <button
                   data-testid={`delete-media-${m.id}`}
                   onClick={() => onDelete(m)}
-                  className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
+                  className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 btn-press hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
                 >
                   Hapus
                 </button>

@@ -94,7 +94,7 @@ export default function PlaylistsPage() {
           <Link
             key={p.id}
             href={`/dashboard/playlists/${p.id}`}
-            className="flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 transition-colors hover:border-emerald-500/40"
+            className="card-lift flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-emerald-500/40"
           >
             <div>
               <p className="font-medium">{p.name}</p>

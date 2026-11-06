@@ -35,7 +35,7 @@ export default function KpiCard({
         <p className="mt-2 text-3xl font-extrabold text-slate-900 dark:text-white">{value}</p>
         {sublabel && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{sublabel}</p>}
         {href && (
-          <span className="mt-3 inline-flex text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="btn-icon mt-3 inline-flex text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             {label.includes("Layar") ? "Kelola Layar →" : label.includes("Konten") ? "Buka Pustaka →" : "Kelola Playlist →"}
           </span>
         )}
@@ -44,7 +44,7 @@ export default function KpiCard({
 
   if (href && variant !== "highlight") {
     return (
-      <Link href={href} className="block">
+      <Link href={href} className="card-lift group block rounded-2xl">
         {card}
       </Link>
     );

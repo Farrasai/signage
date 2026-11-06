@@ -46,7 +46,7 @@ export default function UsersPage() {
   }
   return (
     <div>
-      <div className="mb-5 flex justify-end"><button data-testid="add-user-button" onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow">+ Buat Operator</button></div>
+      <div className="mb-5 flex justify-end"><button data-testid="add-user-button" onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 btn-press cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow">+ Buat Operator</button></div>
       {error && <p data-testid="user-form-error" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</p>}
       {loading ? <p className="text-sm text-slate-500">Memuat...</p> : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">

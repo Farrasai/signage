@@ -16,7 +16,7 @@ export default function QueueList({
   onCancel: (item: AnnouncerItem) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <div className="card-lift rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
       <div className="border-b border-slate-200 dark:border-slate-800 px-4 py-3">
         <h2 className="text-sm font-medium">
           Antrean Pemutaran di TV{queue.length > 0 && ` (${queue.length} item)`}

@@ -70,13 +70,13 @@ export default function MediaList({
                 <div className="flex items-center justify-end gap-3">
                   <button
                     onClick={() => onEdit(m)}
-                    className="cursor-pointer rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                    className="cursor-pointer rounded-xl border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 btn-press hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => onDelete(m)}
-                    className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
+                    className="cursor-pointer rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 btn-press hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30"
                   >
                     Hapus
                   </button>

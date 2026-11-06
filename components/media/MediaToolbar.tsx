@@ -44,7 +44,7 @@ export default function MediaToolbar({
             key={pill.key}
             onClick={() => onFilterChange(pill.key)}
             aria-pressed={filter === pill.key}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`btn-press flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${
               filter === pill.key
                 ? "bg-emerald-600 text-white"
                 : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:border-emerald-500/40 hover:text-slate-900 dark:text-white"
@@ -69,7 +69,7 @@ export default function MediaToolbar({
           aria-label="Tampilan grid"
           aria-pressed={viewMode === "grid"}
           title="Tampilan Grid"
-          className={`rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+          className={`btn-press cursor-pointer rounded-lg px-2.5 py-1.5 text-sm ${
             viewMode === "grid"
               ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
               : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"
@@ -82,7 +82,7 @@ export default function MediaToolbar({
           aria-label="Tampilan list"
           aria-pressed={viewMode === "list"}
           title="Tampilan List"
-          className={`rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+          className={`btn-press cursor-pointer rounded-lg px-2.5 py-1.5 text-sm ${
             viewMode === "list"
               ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
               : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white"

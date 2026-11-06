@@ -32,7 +32,7 @@ export default function Modal({
     >
       <div
         data-testid="modal-content"
-        className={`w-full ${width} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-lg`}
+        className={`modal-in w-full ${width} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-lg`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">

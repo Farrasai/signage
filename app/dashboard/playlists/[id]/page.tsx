@@ -177,7 +177,7 @@ export default function PlaylistEditorPage() {
           <div
             key={item.id}
             data-testid={`playlist-item-${item.id}`}
-            className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3"
+            className="card-lift flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3"
           >
             <span className="w-6 text-center text-sm text-slate-500 dark:text-slate-400">{index + 1}</span>
             <div className="flex min-w-0 flex-1 items-center gap-3">
