@@ -17,8 +17,28 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Siaran — Digital Signage CMS",
-  description: "Kelola konten TV dan video wall dari mana saja.",
+  title: {
+    default: "Pariwara — Digital Signage CMS",
+    template: "%s — Pariwara",
+  },
+  description:
+    "Pariwara — kelola konten TV dan video wall dari mana saja: foto, video, YouTube, playlist, jadwal, dan pengumuman suara.",
+  applicationName: "Pariwara",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  openGraph: {
+    title: "Pariwara — Digital Signage CMS",
+    description: "Kelola konten TV dan video wall dari mana saja.",
+    siteName: "Pariwara",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

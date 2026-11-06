@@ -1,4 +1,4 @@
-# Progress — Siaran Digital Signage CMS
+# Progress — Pariwara Digital Signage CMS
 
 Catatan ringkasan semua task yang sudah dikerjakan pada project ini.
 Diperbarui otomatis setiap ada penambahan atau perubahan kode.
@@ -6,6 +6,28 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 ---
 
 ## 📋 Riwayat Task
+
+### [2026-10-27] REBRANDING: Siaran → Pariwara + favicon & logo
+
+- **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)
+- **Tujuan:** Mengganti nama produk menjadi **Pariwara** dan memasang aset ikon dari `favicon_io/`.
+- **Aset (6 berkas) → `public/`:** `favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`, `android-chrome-192x192.png`, `android-chrome-512x512.png`.
+- **`app/favicon.ico` DIHAPUS.** File ini menang prioritas atas `public/favicon.ico`; kalau dibiarkan ikon lama tetap tampil meski aset baru sudah ada.
+- **`public/site.webmanifest` (baru):** `name`/`short_name` yang tadinya kosong diisi, `theme_color` `#ffffff` → `#059669` (samakan dengan aksen emerald aplikasi).
+- **`app/layout.tsx`:** `metadata` diperluas — `title` bertemplate (`%s — Pariwara`), `applicationName`, `manifest`, `icons` (ico + 32 + 16 + apple), `openGraph`.
+- **`app/login/page.tsx`:** 2 titik `Digital Signage` → `Pariwara` (panel branding desktop + branding mobile).
+- **`components/Sidebar.tsx`:** kotak dekoratif `◈` + titik `animate-ping` diganti `<Image src="/android-chrome-192x192.png">` 40×40 `rounded-xl object-cover`. Judul `Digital Signage` → `Pariwara`; subjudul "Sistem Kontrol Terpadu" dipertahankan.
+- **`app/display/page.tsx`:** wordmark kecil `PARIWARA` ditambahkan di atas judul "Pasangkan Layar Ini".
+- **Dokumentasi:** judul `README.md`, `AGENTS.md`, `progress.md`, dan PRD diperbarui.
+
+#### Yang SENGAJA tidak diubah
+- **`PAIRING_STORAGE_KEY = "siaran:paired-slug"`** di `lib/utils.ts` — mengubahnya membuat semua TV yang sudah dipasangkan kehilangan pairing dan harus PIN ulang.
+- Istilah **fitur** (bukan nama produk): `Kontrol Siaran`, `Jadwal Siaran`, `siaran langsung`, `performa siaran`, `Pengumuman siaran langsung`.
+- Nama token CSS (`--font-display`), variabel internal, dan nama file `PRD-Siaran-Digital-Signage.md` (hanya judul H1 di dalamnya yang diubah).
+
+- **Verifikasi:** `tsc` exit 0, `npm run build` Compiled successfully, `eslint` 20 problems (tidak naik).
+
+---
 
 ### [2026-10-27] FIX: Video CDN blank saat looping (decoder leak) + diagnostik
 

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import SystemClock from "@/components/SystemClock";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -40,14 +41,16 @@ export default function Sidebar({
   return (
     <div className="flex h-full flex-col px-4 py-5">
       <div className="mb-6 flex items-center gap-3 px-1">
-        <div className="emerald-wave-pattern relative flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md">
-          <span className="relative text-sm font-extrabold">◈</span>
-          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400">
-            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-60" />
-          </span>
-        </div>
+        <Image
+          src="/android-chrome-192x192.png"
+          alt="Pariwara"
+          width={40}
+          height={40}
+          className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-md"
+          priority
+        />
         <div>
-          <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Digital Signage</p>
+          <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Pariwara</p>
           <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Sistem Kontrol Terpadu</p>
         </div>
       </div>

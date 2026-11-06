@@ -69,7 +69,7 @@ export default function LoginPage() {
             style={{ boxShadow: "0 0 10px rgba(255,255,255,0.8)" }}
             aria-hidden
           />
-          <span className="text-sm font-semibold tracking-tight">Digital Signage</span>
+          <span className="text-sm font-semibold tracking-tight">Pariwara</span>
         </div>
 
         <div>
@@ -95,7 +95,7 @@ export default function LoginPage() {
             style={{ boxShadow: "0 0 8px var(--signal)" }}
             aria-hidden
           />
-          <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">Digital Signage</span>
+          <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">Pariwara</span>
         </div>
 
         <div className="w-full max-w-sm">

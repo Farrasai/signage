@@ -1,4 +1,4 @@
-# Siaran — Digital Signage CMS
+# Pariwara — Digital Signage CMS
 
 CMS untuk mengelola TV / video wall dari mana saja: pilih foto, video, atau
 playlist YouTube; atur durasi tiap konten; jadwalkan per hari & jam; kendalikan

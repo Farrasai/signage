@@ -83,6 +83,7 @@ export default function DisplayPairingPage() {
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 px-6 text-center">
       <span className="mb-6 h-2.5 w-2.5 rounded-full bg-emerald-600 shadow-[0_0_12px_var(--signal)]" />
+      <p className="mb-2 text-xs font-bold uppercase tracking-[0.3em] text-white/40">Pariwara</p>
       <h1 className="font-display text-2xl font-semibold text-white sm:text-3xl">
         Pasangkan Layar Ini
       </h1>

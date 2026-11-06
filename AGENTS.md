@@ -1,4 +1,4 @@
-# AGENTS.md — Siaran Digital Signage CMS
+# AGENTS.md — Pariwara Digital Signage CMS
 
 Referensi cepat sebelum mengubah kode. Detail lengkap ada di `PRD-Siaran-Digital-Signage.md` — file ini hanya rangkuman aturan yang **wajib dipatuhi**.
 

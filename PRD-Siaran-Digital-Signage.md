@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
-## Siaran — Digital Signage CMS
+## Pariwara — Digital Signage CMS
 
 | | |
 |---|---|
-| **Produk** | Siaran — Digital Signage CMS |
+| **Produk** | Pariwara — Digital Signage CMS |
 | **Versi dokumen** | 1.0 |
 | **Status** | Diimplementasikan & sudah deploy production |
 | **Platform** | Web (Next.js) — dashboard admin + player fullscreen untuk TV/monitor |
@@ -12,7 +12,7 @@
 
 ## 1. Ringkasan Eksekutif
 
-Siaran adalah sistem manajemen konten digital signage berbasis web yang memungkinkan satu admin mengelola banyak layar TV/video wall dari lokasi mana pun, tanpa perangkat lunak tambahan di sisi TV — cukup browser bawaan TV/Android TV box. Sistem mencakup manajemen konten (foto, video, tabel data, YouTube, CDN eksternal), penjadwalan otomatis berbasis waktu, kontrol jarak jauh secara realtime, mode darurat (pengumuman prioritas), serta mekanisme pemasangan (pairing) TV yang ramah remote control.
+Pariwara adalah sistem manajemen konten digital signage berbasis web yang memungkinkan satu admin mengelola banyak layar TV/video wall dari lokasi mana pun, tanpa perangkat lunak tambahan di sisi TV — cukup browser bawaan TV/Android TV box. Sistem mencakup manajemen konten (foto, video, tabel data, YouTube, CDN eksternal), penjadwalan otomatis berbasis waktu, kontrol jarak jauh secara realtime, mode darurat (pengumuman prioritas), serta mekanisme pemasangan (pairing) TV yang ramah remote control.
 
 **Prinsip desain utama**: sederhana, murah/gratis untuk dioperasikan, dan siap pakai tanpa server tambahan yang perlu dikelola sendiri.
 
