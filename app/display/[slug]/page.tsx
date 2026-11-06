@@ -593,7 +593,11 @@ export default function DisplayPlayerPage() {
         ↺ Lepas pasangan
       </button>
 
-      <div data-testid="player-stage" className="absolute inset-0">
+      {/* Stage berhenti di atas marquee: tanpa `bottom-*` konten tertutup 48-56px. */}
+      <div
+        data-testid="player-stage"
+        className={marqueeText ? "absolute inset-x-0 top-0 bottom-12 sm:bottom-14" : "absolute inset-0"}
+      >
         {!currentItem?.media ? (
           <WaitingScreen name={display.name} hasPlaylist={Boolean(activePlaylistId)} />
         ) : (

@@ -7,6 +7,31 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-27] FIX: Tabel agenda terpotong di Smart TV (auto-fit + marquee)
+
+- **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)
+- **Gejala:** tabel agenda di player TV terpotong dan harus di-scroll, tidak fit layar.
+- **ROOT CAUSE #1 — font rem tetap buta terhadap tinggi layar.** `sizingFor()` hanya membaca **jumlah baris** lalu mengembalikan angka `rem` mati. Smart TV / Android TV WebView sering melaporkan CSS viewport hanya **540–720 px** (lalu meng-upscale internal), sehingga tabel yang sama jadi 1,5–2x kebesaran → overflow. Sebaliknya di panel 1080p angka yang sama membuat teks terlalu kecil (10 baris hanya butuh 613 dari 912 px).
+- **ROOT CAUSE #2 — bucket tidak menghitung panjang teks.** Sel `"Senin, 10:00 - Ruang Rapat Lantai 3 Sayap Barat"` wrap 2–3 baris, tinggi baris berlipat sementara font tetap. Tidak ada rumus berbasis jumlah baris yang bisa memprediksi ini.
+- **ROOT CAUSE #3 — padding tetap + simetris** (`1.15rem 1.5rem` = 36,8 px/baris) tidak pernah menyusut saat panel pendek.
+- **ROOT CAUSE #4 — marquee menimpa konten.** Marquee `h-12 sm:h-14` (48–56 px) ber-`z-20` menutupi area stage sehingga baris terakhir selalu tertutup.
+- **Perbaikan `components/AgendaTable.tsx`:**
+  - `sizingFor()` **dihapus**. Diganti auto-fit terukur: `useLayoutEffect` mengukur `box.clientHeight`, estimasi awal `availH / ((rows+1) × 2.4)`, lalu perkecil bertahap (`×0.94`) sampai `scrollHeight <= clientHeight`. Menangani sel yang wrap tanpa bisa diprediksi.
+  - Batas `MIN_FONT_PX = 10`, `MAX_FONT_PX = 44`, `MAX_SHRINK_STEPS = 40` (anti loop tak henti).
+  - Padding sel jadi `0.5em 0.9em` — ikut mengecil bersama font, bukan angka px mati.
+  - `lineHeight: 1.25` eksplisit agar konstanta `ROW_FACTOR` akurat.
+  - Judul `clamp(1.25rem, 3.2vh, 3rem)` + `line-clamp: 1` (dulu `text-3xl sm:text-5xl` tetap = 72 px hilang dari tinggi tabel).
+  - Container `px-6 py-4 sm:px-12 sm:py-6` (dulu `py-8 sm:py-12` = 96 px).
+  - Sel panjang: `overflowWrap: anywhere`.
+  - `overflow-y-auto` **dipertahankan sebagai failsafe murni** — hanya aktif bila font sudah menyentuh 10 px. Untuk signage, baris hilang diam-diam lebih berbahaya daripada scroll di kasus ekstrem.
+  - Sebelum terukur, font memakai `clamp(0.7rem, 2.2vh, 2.6rem)` supaya tidak ada lonjakan visual.
+- **Perbaikan `app/display/[slug]/page.tsx`:** `player-stage` diberi `bottom-12 sm:bottom-14` saat marquee aktif, sehingga seluruh konten (foto, video, YouTube, tabel) berhenti di atas marquee dan tidak lagi tertutup.
+- **Hasil hitungan (10 baris):** panel 720p → font ~21,9 px, total 542/578 px (fit). Panel 1080p → font ~35,5 px, total 879/938 px (fit, jauh lebih terbaca dari sebelumnya 22,4 px).
+- **Wajib diuji di TV fisik** (perubahan menyentuh player): cek tabel 4/10/16 baris + tabel teks panjang, pastikan tidak ada jeda/blank saat slide tabel muncul (`useLayoutEffect` memicu beberapa forced reflow, tipikal 3–8 iterasi).
+- **Catatan:** `backdrop-blur-sm` pada marquee **tidak** diubah di task ini (sisa pola yang dulu dibuang dari `AnnouncerBadge` karena membekukan Android TV minim VRAM). Kandidat pertama bila marquee terasa nge-lag.
+
+---
+
 ### [2026-10-27] Security: Heartbeat via RPC + Refactor file >1.000 baris
 
 - **Status:** ✅ Selesai (build hijau 14 routes; lint **34 → 20 problems**)

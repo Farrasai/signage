@@ -215,7 +215,7 @@ npm run lint     # eslint
   preferensi disimpan di `localStorage`.
 - **Status online**: TV mengirim heartbeat tiap 25 detik; layar dianggap online bila
   heartbeat terakhir kurang dari 60 detik.
-- **Konten tabel (agenda)**: kolom dan baris disusun dari dashboard (bisa tempel dari Excel). Di layar TV dirender oleh `components/AgendaTable.tsx` dengan tema **terang**: latar putih, header `emerald-600` solid + teks putih **bold**, isi sel `slate-900` **bold**, zebra `emerald-50`. Ukuran font menyesuaikan jumlah baris agar tetap terbaca dari jauh.
+- **Konten tabel (agenda)**: kolom dan baris disusun dari dashboard (bisa tempel dari Excel). Di layar TV dirender oleh `components/AgendaTable.tsx` dengan tema **terang**: latar putih, header `emerald-600` solid + teks putih **bold**, isi sel `slate-900` **bold**, zebra `emerald-50`. **Ukuran font dihitung otomatis agar tabel SELALU FIT** (auto-fit terukur: tinggi panel diukur, font diperkecil bertahap sampai muat) — bukan angka `rem` tetap, karena Smart TV sering melaporkan CSS viewport hanya 540–720px sehingga tabel jadi kebesaran dan terpotong.
 - **Toast notification**: setiap aksi (login/logout, tambah/edit/hapus layar, konten, playlist, jadwal, pengumuman suara, user) memberi umpan balik sukses/gagal lewat `lib/toast`. Untuk logout dipakai `queueToast()` agar pesan tampil setelah pindah ke halaman login.
 - **Pengumuman suara - dua mode**: tab **Jadwal Pengumuman** (otomatis pada jam & hari tertentu) dan tab **Siaran Langsung** (langsung masuk antrean TV). Tombol tambah selalu tersedia di toolbar kanan atas.
 
@@ -304,6 +304,8 @@ Bug di aplikasi ini beberapa kali **bukan** di tempat yang terlihat. Baca Consol
 | Tombol tambah (CREATE) hilang setelah ada data | Tombol hanya dirender di empty-state | halaman dashboard terkait (pindah ke toolbar) |
 | Tab/fitur tidak bisa dibuka sama sekali | `setState` untuk tab tidak pernah dipanggil | halaman dashboard terkait |
 | Tabel agenda TV tidak terbaca | Teks transparan di atas latar gelap | `components/AgendaTable.tsx` (tema terang) |
+| Tabel agenda TV terpotong, harus di-scroll | Font `rem` tetap tidak melihat tinggi panel (TV lapor 540–720px) | `components/AgendaTable.tsx` (auto-fit terukur) |
+| Baris terakhir tabel / bawah video tertutup | Marquee `z-20` menimpa `player-stage` | `app/display/[slug]/page.tsx` (`bottom-12 sm:bottom-14`) |
 
 ### Cara membedakan error RLS storage vs RLS tabel
 
