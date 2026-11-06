@@ -311,6 +311,16 @@ Bug di aplikasi ini beberapa kali **bukan** di tempat yang terlihat. Baca Consol
 | Baris terakhir tabel / bawah video tertutup | Marquee `z-20` menimpa `player-stage` | `app/display/[slug]/page.tsx` (`bottom-12 sm:bottom-14`) |
 | Tombol ⛶ tidak hilang walau diklik di APK | `requestFullscreen()` tidak berefek di WebView, `catch` menelannya | `lib/use-already-fullscreen.ts` (tombol disembunyikan bila viewport sudah penuh) |
 | UI TV membeku/blank | `backdrop-blur` di elemen overlay | tombol overlay player, `EmergencyOverlay.tsx` |
+| Video CDN blank saat looping, putaran pertama normal | Decoder hardware bocor: `VideoLayer` tidak melepas elemen `<video>` saat unmount | `components/SlideStage.tsx` (cleanup `removeAttribute("src")` + `load()`) |
+| Video besar butuh waktu lama / hitam 8 dtk | Tukar-paksa terlalu cepat untuk video | `components/SlideStage.tsx` (`READY_TIMEOUT_VIDEO_MS = 25000`) |
+| Video gagal tanpa pesan apa pun | `onError` sengaja tidak memanggil skip, jadi senyap | buka player dengan `?debug=1` (badge diagnostik) |
+
+### Membaca diagnostik video di TV
+
+Buka `https://domain-anda/display/nama-slug?debug=1`. Badge kecil di kiri atas menampilkan
+kegagalan video terakhir: `DECODE` (3) = decoder menolak, `NETWORK` (2) = unduhan gagal,
+`SRC_NOT_SUPPORTED` (4) = codec tidak didukung WebView, `ABORTED` (1) = normal saat transisi.
+Tanpa `?debug=1` badge tidak pernah muncul.
 
 ### Cara membedakan error RLS storage vs RLS tabel
 

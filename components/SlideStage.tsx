@@ -3,10 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlaylistItem } from "@/lib/types";
 import { youtubeEmbedUrl } from "@/lib/utils";
+import { labelForErrorCode, reportVideoError } from "@/lib/video-debug";
 import AgendaTable from "@/components/AgendaTable";
 
 /** Batas tunggu maksimal agar konten berikutnya siap sebelum ditukar paksa. */
 const READY_TIMEOUT_MS = 8000;
+/**
+ * Video butuh waktu lebih lama untuk punya frame pertama (terutama CDN besar).
+ * Konten lama tetap terlihat PENUH selama menunggu, jadi memperpanjang tidak
+ * membuat layar kosong — justru mencegah tukar-paksa ke elemen tanpa frame
+ * (yang tampil hitam lalu dipotong watchdog 30 detik).
+ */
+const READY_TIMEOUT_VIDEO_MS = 25000;
 
 type Slot = { index: number; item: PlaylistItem };
 
@@ -111,6 +119,9 @@ export default function SlideStage({
     const targetItem = items[currentIndex];
     if (!targetItem) return;
 
+    // Video diberi waktu lebih panjang untuk mendapat frame pertama.
+    const readyMs = targetItem.media?.type === "video" ? READY_TIMEOUT_VIDEO_MS : READY_TIMEOUT_MS;
+
     const st = stagedRef.current;
     if (st && st.index === currentIndex && st.item.id === targetItem.id) {
       // Sudah diprefetch oleh efek di bawah.
@@ -120,7 +131,7 @@ export default function SlideStage({
         clearReadyFailsafe();
         readyFailsafeRef.current = setTimeout(() => {
           if (stagedRef.current?.index === currentIndexRef.current) swapIn();
-        }, READY_TIMEOUT_MS);
+        }, readyMs);
       }
       return;
     }
@@ -133,7 +144,7 @@ export default function SlideStage({
     setStaged({ index: currentIndex, item: targetItem });
     readyFailsafeRef.current = setTimeout(() => {
       if (stagedRef.current?.index === currentIndexRef.current) swapIn();
-    }, READY_TIMEOUT_MS);
+    }, readyMs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
@@ -290,8 +301,23 @@ function VideoLayer({
 
   useEffect(() => {
     disposedRef.current = false;
+  }, []);
+
+  // Lepaskan decoder hardware saat lapis ini dibuang. Tanpa ini setiap transisi
+  // meninggalkan elemen <video> yang masih memegang MediaCodec; Android TV hanya
+  // punya 1-2 instance sehingga alokasi berikutnya gagal -> layar blank
+  // (pola "putaran pertama bisa, setelah itu tidak").
+  useEffect(() => {
+    const el = videoRef.current;
     return () => {
-      disposedRef.current = true;
+      if (!el) return;
+      try {
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+      } catch {
+        // Elemen sudah dibuang React — tidak apa-apa.
+      }
     };
   }, []);
 
@@ -338,13 +364,35 @@ function VideoLayer({
       autoPlay={!preloadOnly}
       muted
       playsInline
-      // Sengaja TETAP "auto" (tidak diubah saat runtime). Mengubah atribut preload
-      // pada <video> yang sudah hidup memicu abort request + event error.
-      preload="auto"
+      // Lapis prefetch (tersembunyi) cukup "metadata": mencegah dua video besar
+      // berebut decoder & bandwidth dengan video yang sedang tayang.
+      // Nilai ini ditetapkan saat mount dan TIDAK diubah saat runtime, karena
+      // mengubah atribut preload pada <video> yang sudah hidup memicu abort.
+      preload={preloadOnly ? "metadata" : "auto"}
       // readyState >= 2 berarti sudah ada frame; baru saat itu aman untuk ditukar.
       onLoadedData={markReady}
       onCanPlay={markReady}
       onPlaying={markReady}
+      onError={() => {
+        // SENGAJA tidak memanggil onVideoEnded(): browser memicu "error" untuk
+        // hal non-fatal, dan skip prematur pernah memotong video sebelum tampil.
+        // Ini MURNI diagnostik supaya kegagalan tidak lagi senyap.
+        if (disposedRef.current) return;
+        const v = videoRef.current;
+        if (!v) return;
+        const code = v.error?.code ?? 0;
+        const label = labelForErrorCode(code);
+        console.warn(
+          `[video] gagal: ${label} (code ${code}) readyState=${v.readyState} networkState=${v.networkState}`
+        );
+        reportVideoError({
+          label,
+          code,
+          readyState: v.readyState,
+          networkState: v.networkState,
+          url,
+        });
+      }}
       onEnded={() => {
         if (isCurrent && !disposedRef.current) onVideoEnded();
       }}

@@ -7,6 +7,47 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-27] FIX: Video CDN blank saat looping (decoder leak) + diagnostik
+
+- **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)
+- **Gejala:** video 67 MB (`cdn.knwng.my.id/INTEL/Capaian Kinerja Intel Sem 1.mp4`) tampil setelah clear cache, tapi **blank lagi saat loop kembali ke konten itu**. Di browser desktop selalu aman.
+- **ROOT CAUSE #1 — decoder hardware bocor tiap transisi.** `VideoLayer` tidak punya cleanup yang melepas elemen `<video>`. Setiap transisi membuat elemen baru dan meninggalkan yang lama; Android TV hanya punya 1–2 instance MediaCodec, sehingga alokasi berikutnya gagal → elemen baru tidak pernah mendapat frame. Ini menjelaskan pola khas "putaran pertama bisa, setelah itu tidak".
+- **ROOT CAUSE #2 — prefetch membuang hasil kerjanya sendiri.** `SlideStage.tsx` merender dua `<SlideLayer>` **tanpa `key`**, sehingga React mencocokkan berdasarkan posisi. Saat `swapIn()`: posisi 1 berganti src (elemen dibuat ulang dari byte 0) dan posisi 2 dihapus (buffer prefetch di-abort). Vendor video besar selalu diunduh ulang dari nol setiap peralihan.
+- **ROOT CAUSE #3 — dua video besar aktif bersamaan.** Lapis `staged` memakai `preload="auto"` sehingga berebut decoder + bandwidth dengan video yang sedang tayang.
+- **ROOT CAUSE #4 — tukar-paksa 8 detik.** `READY_TIMEOUT_MS = 8000` memaksa swap walau elemen belum punya frame (`readyState < 2`) → layar hitam → watchdog `page.tsx:473` menunggu 30 dtk → total ~38 dtk kosong.
+- **ROOT CAUSE #5 — gagal senyap.** `onError` sengaja tidak dipasang (AGENTS.md #5) sehingga `MEDIA_ERR_DECODE` tidak meninggalkan jejak apa pun.
+
+#### Perbaikan yang dikerjakan (4 poin)
+- **`components/SlideStage.tsx`:**
+  - Cleanup decoder baru: `el.pause()` + `el.removeAttribute("src")` + `el.load()` saat `VideoLayer` unmount. Elemen di-copy ke variabel lokal di dalam effect agar lolos `exhaustive-deps`.
+  - `preload={preloadOnly ? "metadata" : "auto"}` — lapis prefetch tidak lagi mengunduh penuh.
+  - `READY_TIMEOUT_VIDEO_MS = 25000` khusus video (konten non-video tetap 8000). Konten lama tetap terlihat penuh selama menunggu, jadi memperpanjang tidak membuat layar kosong.
+  - `onError` **non-fatal**: hanya `console.warn` + `reportVideoError()`, **tidak** memanggil `onVideoEnded()` (patuh AGENTS.md #5).
+- **`lib/video-debug.ts`** (baru): menyimpan kegagalan video terakhir di memori + pemetaan kode error (1 ABORTED, 2 NETWORK, 3 DECODE, 4 SRC_NOT_SUPPORTED).
+- **`components/VideoDebugBadge.tsx`** (baru): badge diagnostik yang hanya tampil bila URL memakai `?debug=1`. Memungkinkan pembacaan penyebab langsung di layar TV tanpa `chrome://inspect`. `Date.now()` dipanggil di dalam callback effect (bukan saat render) agar lolos `react-hooks/purity`.
+- **`app/display/[slug]/page.tsx`:** parameter `?debug=1` dibaca dari `window.location.search` di dalam effect, **bukan** `useSearchParams()` — player TV tidak boleh bergantung pada perilaku Suspense/prerender framework, karena bila hook itu melempar error seluruh layar blank (kegagalan terburuk untuk signage).
+
+#### BELUM dikerjakan (menunggu hasil diagnostik)
+- **Keyed layers** (`key={item.id}` pada `SlideLayer` + toggle flag terlihat, bukan pindah posisi). Ini yang membuat prefetch benar-benar dipakai dan menghapus unduhan ganda. Ditunda karena menyentuh jalur transisi dan wajib uji TV fisik.
+
+#### Cara membaca hasil di TV
+Buka `…/display/<slug>?debug=1`, biarkan sampai loop:
+
+| Yang terlihat | Artinya | Tindak lanjut |
+| --- | --- | --- |
+| Badge tidak muncul, video tetap blank | Elemen tidak pernah error — hanya tidak siap (timeout) | Kerjakan keyed layers |
+| `DECODE (3)` | Alokasi decoder gagal | Re-encode ke H.264 High@4.1 8-bit |
+| `NETWORK (2)` | Unduhan gagal/terputus | Masalah jaringan/CDN |
+| `SRC_NOT_SUPPORTED (4)` | Codec tidak didukung WebView | Wajib re-encode |
+| `ABORTED (1)` saat transisi | Normal, diabaikan kode | Abaikan |
+
+#### Catatan diagnosis sebelumnya
+Gejala awal (video tidak tampil sampai clear cache) ternyata **cache HTTP WebView menyimpan respons parsial rusak**; membersihkan cache memaksa unduh ulang. Tidak ada service worker di aplikasi ini — cache murni di level browser/WebView terhadap file media.
+
+- **Verifikasi:** `tsc` exit 0, `npm run build` Compiled successfully, `eslint` 20 problems (tidak naik).
+
+---
+
 ### [2026-10-27] Tombol Fullscreen adaptif (APK) + cabut backdrop-blur + wake lock rapi
 
 - **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)

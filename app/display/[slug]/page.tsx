@@ -8,12 +8,28 @@ import { PAIRING_STORAGE_KEY, resolveActiveSchedule } from "@/lib/utils";
 import EmergencyOverlay from "@/components/EmergencyOverlay";
 import SlideStage from "@/components/SlideStage";
 import AnnouncerBadge from "@/components/AnnouncerBadge";
+import VideoDebugBadge from "@/components/VideoDebugBadge";
 import { useAlreadyFullscreen } from "@/lib/use-already-fullscreen";
 
 export default function DisplayPlayerPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const slug = params.slug;
+  /**
+   * ?debug=1 menampilkan badge diagnostik video di layar TV.
+   * Dibaca dari window (bukan useSearchParams) agar player tidak bergantung pada
+   * perilaku Suspense/prerender framework — kalau hook itu melempar error, TV
+   * blank total dan itu kegagalan terburuk untuk signage.
+   */
+  const [debugMode, setDebugMode] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDebugMode(new URLSearchParams(window.location.search).get("debug") === "1");
+    } catch {
+      // URL tidak bisa di-parse — abaikan, tetap mode normal.
+    }
+  }, []);
 
   const [supabase] = useState(() => createClient());
   const [display, setDisplay] = useState<Display | null>(null);
@@ -581,6 +597,8 @@ export default function DisplayPlayerPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
+      {debugMode && <VideoDebugBadge />}
+
       {!alreadyFullscreen && (
         <button
           data-testid="fullscreen-button"
