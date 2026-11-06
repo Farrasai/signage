@@ -10,8 +10,11 @@ export default function EmergencyOverlay({
   message: string;
   publishedAt: string | null;
 }) {
+  // DILARANG menambahkan backdrop-blur di root overlay ini: lapisan ini tampil di
+  // Android TV minim VRAM dan blur pernah membuat UI membeku/blank (kasus
+  // AnnouncerBadge). Latar sudah cukup gelap lewat gradient, blur tak diperlukan.
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-red-950/90 via-black/85 to-red-950/90 px-6 backdrop-blur-sm">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-red-950/95 via-black/92 to-red-950/95 px-6">
       <div className="w-full max-w-lg rounded-2xl border-2 border-red-500 bg-[#0a0f1a] p-8 text-center shadow-[0_0_60px_rgba(239,68,68,0.45)] sm:p-10">
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border-2 border-red-500 text-3xl font-bold text-red-500 sm:h-20 sm:w-20 sm:text-4xl">
           !

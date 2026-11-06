@@ -91,7 +91,8 @@ Fitur toast ada di `lib/toast/index.tsx` (`ToastProvider`, `useToast`, `queueToa
 4. Halaman yang sudah memakai `useToast()`: `login`, `dashboard/{announcer,displays,media,playlists,playlists/[id],schedules,users}`. Pertahankan pola ini saat mengubah halaman tersebut.
 ## Yang SUDAH diputuskan, jangan diusulkan ulang tanpa alasan baru
 - **Bukan** pakai Telegram Bot API sebagai CDN video (limit 20MB, link sementara, token bisa bocor, bukan CDN sungguhan, risiko ToS).
-- Fullscreen di player **tidak** auto-trigger saat halaman dimuat (browser blokir tanpa gesture, dan terasa mengagetkan) — hanya lewat tombol "⛶ Layar penuh".
+- Fullscreen di player **tidak** auto-trigger saat halaman dimuat (browser blokir tanpa gesture, dan terasa mengagetkan) — **dan tombol "⛶ Layar penuh" hanya dirender bila viewport BELUM penuh** (`useAlreadyFullscreen`, `lib/use-already-fullscreen.ts`). Di APK/WebView/PWA tombol itu tidak berguna karena viewport sudah memenuhi layar. Jangan hanya memakai `display-mode`: WebView APK tanpa manifest PWA melaporkan `(display-mode: browser)` — wajib ditambah heuristik `innerWidth/screen.width`. Tombol tetap muncul di Chrome desktop & Fully Kiosk sehingga jalur pemasangan itu tidak kehilangan fitur.
+- **Dilarang memakai `backdrop-blur` pada elemen overlay player TV** (tombol overlay, `EmergencyOverlay`, `AnnouncerBadge`). Blur pernah membuat UI membeku/blank di Android TV minim VRAM; ganti dengan latar solid yang lebih pekat.
 - Pairing pakai kode PIN pendek, bukan slug panjang, karena target device-nya Android TV/Smart TV browser via remote.
 - Field CDN link generik (`type: image/video` + `url`) — jangan bikin kolom terpisah per provider (Cloudinary/Bunny/dst), cukup ganti URL-nya saja.
 

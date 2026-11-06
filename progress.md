@@ -7,6 +7,27 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-27] Tombol Fullscreen adaptif (APK) + cabut backdrop-blur + wake lock rapi
+
+- **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)
+- **Masalah:** tombol "⛶ Layar penuh" tampil terus di player TV yang dijalankan sebagai APK. Di WebView Android `requestFullscreen()` tidak berefek apa pun (atau reject), dan `catch` di `enterFullscreen()` menelannya diam-diam — akibatnya `fsActive` tetap `false` sehingga **tombol tidak pernah hilang walau diklik berkali-kali**.
+- **Keputusan:** Opsi A — sembunyikan kondisional, **bukan** hapus total. Menghapus total akan mematikan fitur untuk jalur pemasangan Chrome `--kiosk` & Fully Kiosk (README bagian 5), yang masih butuh tombol itu.
+- **File dibuat:** `lib/use-already-fullscreen.ts`
+  - `true` bila `display-mode: fullscreen/standalone` **atau** `innerWidth/innerHeight` ±2px sama dengan `screen.width/height` **atau** `document.fullscreenElement` ada.
+  - Heuristik ukuran wajib: WebView APK tanpa manifest PWA melaporkan `(display-mode: browser)` walau sudah penuh layar. Di Chrome desktop selisihnya puluhan-ratusan px (chrome bar/tab bar).
+  - Mendengar `resize` + `fullscreenchange`, jadi tombol muncul lagi bila pengguna keluar fullscreen (Escape) di desktop.
+- **File diubah:** `app/display/[slug]/page.tsx`
+  - `fsActive` state + efek `fullscreenchange` (3 baris) **dihapus**, diganti `useAlreadyFullscreen()`.
+  - Render tombol: `{!fsActive && ...}` → `{!alreadyFullscreen && ...}`.
+  - `backdrop-blur` dicabut dari kedua tombol overlay; `bg-black/40`→`/60` dan `bg-black/30`→`/50` agar teks tetap kontras tanpa blur.
+  - `acquireWakeLock()`: lepas sentinel lama (`release()`) sebelum request baru — mencegah ref menumpuk tiap `visibilitychange`.
+  - Cleanup efek wake lock: `release()` + null saat unmount.
+- **File diubah:** `components/EmergencyOverlay.tsx` — `backdrop-blur-sm` dicabut (overlay ini tampil penuh layar di TV), gradient dinaikkan `from-red-950/95 via-black/92` sebagai kompensasi kontras. Catatan larangan ditulis di kode.
+- **Catatan penting untuk APK:** setelah tombol hilang, `acquireWakeLock()` hanya berjalan tanpa gestur. Di WebView Android `navigator.wakeLock` sering `undefined` (dipanggil dengan `?.` → gagal senyap). Karena itu **wajib** tambahkan `FLAG_KEEP_SCREEN_ON` di sisi Android; sudah dicatat di README bagian 5.
+- **Verifikasi:** `tsc` exit 0, `npm run build` Compiled successfully, `eslint` 20 problems (tidak naik).
+
+---
+
 ### [2026-10-27] FIX: Tabel agenda terpotong di Smart TV (auto-fit + marquee)
 
 - **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)

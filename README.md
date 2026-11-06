@@ -175,9 +175,12 @@ npm run lint     # eslint
      atau jalankan Chrome dengan flag `--kiosk https://domain-anda.vercel.app/display/slug`
      di mini PC/PC yang disambungkan ke TV lewat HDMI.
    - Aktifkan "Launch on boot" di aplikasi kiosk agar otomatis menyala saat TV dinyalakan.
-   - Halaman memakai **Wake Lock** agar layar tidak tidur, dan ada tombol fullscreen
-     kecil di pojok. Fullscreen tidak dipicu otomatis saat load: browser memblokir
-     tanpa interaksi pengguna dan efeknya terasa mengagetkan.
+   - Halaman memakai **Wake Lock** agar layar tidak tidur. Tombol **⛶ Layar penuh** hanya
+     muncul bila viewport belum memenuhi layar — jadi di APK/WebView/PWA tombol itu
+     otomatis tidak tampil, sementara di Chrome kiosk & Fully Kiosk tetap tersedia.
+   - **Khusus APK/WebView:** `navigator.wakeLock` sering tidak tersedia, sehingga Wake Lock
+     gagal senyap. Tambahkan `FLAG_KEEP_SCREEN_ON` di sisi Android (`getWindow().addFlags(
+     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)`) supaya layar tidak tidur.
 4. Tambahkan konten di **Konten Media** (upload foto/video, tempel link CDN, atau link
    YouTube), susun jadi **Playlist**, lalu pasang playlist itu ke layar di halaman
    **Layar & TV**. Perubahan tersiar ke TV dalam hitungan detik lewat Supabase Realtime —
@@ -306,6 +309,8 @@ Bug di aplikasi ini beberapa kali **bukan** di tempat yang terlihat. Baca Consol
 | Tabel agenda TV tidak terbaca | Teks transparan di atas latar gelap | `components/AgendaTable.tsx` (tema terang) |
 | Tabel agenda TV terpotong, harus di-scroll | Font `rem` tetap tidak melihat tinggi panel (TV lapor 540–720px) | `components/AgendaTable.tsx` (auto-fit terukur) |
 | Baris terakhir tabel / bawah video tertutup | Marquee `z-20` menimpa `player-stage` | `app/display/[slug]/page.tsx` (`bottom-12 sm:bottom-14`) |
+| Tombol ⛶ tidak hilang walau diklik di APK | `requestFullscreen()` tidak berefek di WebView, `catch` menelannya | `lib/use-already-fullscreen.ts` (tombol disembunyikan bila viewport sudah penuh) |
+| UI TV membeku/blank | `backdrop-blur` di elemen overlay | tombol overlay player, `EmergencyOverlay.tsx` |
 
 ### Cara membedakan error RLS storage vs RLS tabel
 

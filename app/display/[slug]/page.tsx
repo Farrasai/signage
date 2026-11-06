@@ -8,6 +8,7 @@ import { PAIRING_STORAGE_KEY, resolveActiveSchedule } from "@/lib/utils";
 import EmergencyOverlay from "@/components/EmergencyOverlay";
 import SlideStage from "@/components/SlideStage";
 import AnnouncerBadge from "@/components/AnnouncerBadge";
+import { useAlreadyFullscreen } from "@/lib/use-already-fullscreen";
 
 export default function DisplayPlayerPage() {
   const params = useParams<{ slug: string }>();
@@ -21,7 +22,8 @@ export default function DisplayPlayerPage() {
   const [items, setItems] = useState<PlaylistItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tick, setTick] = useState(0);
-  const [fsActive, setFsActive] = useState(false);
+  /** true bila viewport sudah penuh layar (APK/WebView, PWA) — tombol disembunyikan. */
+  const alreadyFullscreen = useAlreadyFullscreen();
   const [emergencyNotice, setEmergencyNotice] = useState<EmergencyNotice | null>(null);
   const [announcerQueue, setAnnouncerQueue] = useState<AnnouncerItem[]>([]);
   const [scheduledAnnouncements, setScheduledAnnouncements] = useState<Announcement[]>([]);
@@ -486,6 +488,11 @@ export default function DisplayPlayerPage() {
   // ---------- Fullscreen + wake lock ----------
   const acquireWakeLock = useCallback(async () => {
     try {
+      // Lepaskan sentinel lama dulu: tanpa ini ref menumpuk tiap visibilitychange.
+      if (wakeLockRef.current && !wakeLockRef.current.released) {
+        await wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
       wakeLockRef.current = (await navigator.wakeLock?.request("screen")) ?? null;
     } catch {
       // Wake Lock tidak didukung di browser ini — layar mungkin tidur sesuai
@@ -510,22 +517,22 @@ export default function DisplayPlayerPage() {
     // besar browser). Fullscreen SENGAJA TIDAK diminta otomatis saat halaman
     // dimuat — browser modern memblokirnya tanpa interaksi pengguna, dan
     // kalaupun berhasil (mis. di sebagian browser TV) terasa tiba-tiba/
-    // mengagetkan. Fullscreen hanya dipicu lewat tombol "⛶ Layar penuh".
+    // mengagetkan. Tombol "Layar penuh" hanya muncul bila viewport BELUM penuh
+    // (lihat useAlreadyFullscreen) — di APK/WebView tombol itu tidak berguna.
     acquireWakeLock();
     const onVisible = () => {
       if (document.visibilityState === "visible") acquireWakeLock();
     };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      // Jangan tinggalkan sentinel menggantung saat komponen unmount.
+      if (wakeLockRef.current && !wakeLockRef.current.released) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
   }, [acquireWakeLock]);
-
-  // Sinkronkan tombol dengan status fullscreen sebenarnya (mis. saat keluar
-  // fullscreen dengan tombol Escape, tombolnya harus muncul kembali).
-  useEffect(() => {
-    const onFsChange = () => setFsActive(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
 
   // ---------- Render ----------
   if (notFound) {
@@ -574,11 +581,11 @@ export default function DisplayPlayerPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
-      {!fsActive && (
+      {!alreadyFullscreen && (
         <button
           data-testid="fullscreen-button"
           onClick={enterFullscreen}
-          className="absolute right-3 top-3 z-30 rounded-md border border-white/20 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur hover:bg-black/60"
+          className="absolute right-3 top-3 z-30 rounded-md border border-white/20 bg-black/60 px-3 py-1.5 text-xs text-white/70 hover:bg-black/75"
         >
           ⛶ Layar penuh
         </button>
@@ -587,7 +594,7 @@ export default function DisplayPlayerPage() {
       <button
         data-testid="unpair-button"
         onClick={unpair}
-        className="absolute bottom-3 right-3 z-30 rounded-md border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] text-white/30 backdrop-blur hover:border-white/30 hover:text-white/60"
+        className="absolute bottom-3 right-3 z-30 rounded-md border border-white/10 bg-black/50 px-2.5 py-1 text-[10px] text-white/40 hover:border-white/30 hover:text-white/60"
         title="Lepas pasangan layar ini dan kembali ke halaman pairing"
       >
         ↺ Lepas pasangan
