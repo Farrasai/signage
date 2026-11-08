@@ -7,6 +7,59 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-27] APK: Kiosk WebView untuk Android TV (`apk-display/`)
+
+- **Status:** ✅ Scaffold + dokumen selesai (belum di-build; butuh Android SDK di mesin lokal)
+- **Tujuan:** Membungkus player `/display` jadi APK kiosk ringan, anti-lag, auto-start, tahan jaringan putus.
+- **Lokasi:** folder baru `apk-display/` (proyek Gradle terpisah, tidak mengganggu build Next.js).
+- `applicationId` `id.knwng.pariwara.display`, minSdk 24, targetSdk 34, Kotlin, dependency eksplisit hanya `androidx.core:core-ktx:1.13.1`.
+- **File dibuat:** `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `app/build.gradle.kts`, `app/proguard-rules.pro`, `AndroidManifest.xml`, 5 file Kotlin (`MainActivity`, `BootReceiver`, `NetWatcher`, `OfflineOverlay`, `WebViewSetup`), 6 resource XML, ikon `mipmap-{hdpi,xhdpi}` dari `favicon_io`, plus `APK.md` + `README.md` + `.gitignore`.
+
+#### Temuan teknis yang mengubah desain
+1. **`navigator.wakeLock` tidak ada di WebView** → wajib `FLAG_KEEP_SCREEN_ON`, kalau tidak layar TV tidur sendiri.
+2. **`LOAD_CACHE_ELSE_NETWORK` berbahaya** — mengabaikan `Cache-Control`, sehingga perubahan playlist/jadwal tidak pernah muncul. Dipakai `LOAD_DEFAULT`.
+3. **TV 1080p melaporkan CSS viewport 960×540** → `useWideViewPort` & `loadWithOverviewMode` dimatikan agar tidak double-scale (penyebab tabel agenda terpotong).
+4. **`onBackPressed()` deprecated sejak API 33** → tanpa `androidx.activity`, solusinya `android:enableOnBackInvokedCallback="false"`. Kalau lupa, tombol BACK menutup aplikasi.
+5. **`onRenderProcessGone` dipasang di `WebViewClient`**, bukan `Activity` (signature `Activity` bertipe `WebView` dan mudah salah; `WebViewClient` lebih pasti untuk lintas API).
+6. **`onTrimMemory` hanya bereaksi di `TRIM_MEMORY_COMPLETE`** — bereaksi di `RUNNING_LOW` akan menghapus cache dan memaksa unduh ulang video 67 MB.
+
+#### Keputusan desain
+- Overlay offline **native** (bukan error page WebView), tanpa animasi/shadow/elevation.
+- Retry dipicu `registerDefaultNetworkCallback` (API 24+) → pulih seketika; timer 5 detik hanya failsafe.
+- Lepas pasangan: **tahan BACK 3 detik** → dialog native → hapus `localStorage` + `clearCache`.
+- `EXTRA_SLUG` tersedia untuk setup awal tanpa PIN via `adb`.
+- Permission minimal: `INTERNET`, `ACCESS_NETWORK_STATE`, `RECEIVE_BOOT_COMPLETED`.
+
+#### Catatan penting
+- `gradle/wrapper/gradle-wrapper.jar` **tidak disertakan** (biner). Jalankan `gradle wrapper --gradle-version 8.7` atau buka di Android Studio.
+- Kotlin menambah `kotlin-stdlib` (~1,5 MB sebelum R8) sehingga secara teknis ada 2 artefak runtime, bukan satu. Perkiraan APK final 2,5–3,5 MB.
+- `PAIRING_STORAGE_KEY = "siaran:paired-slug"` disalin ke `MainActivity.performUnpair()`. **Kalau web mengganti kunci itu, ubah juga di APK.**
+- Auto-start bisa diblokir OEM TV (Xiaomi/Coocaa/Polytron/TCL) — bukan bug kode; setting Autostart perangkat harus dinyalakan. Tercatat di APK.md bagian 8.
+
+#### Verifikasi yang bisa dilakukan di sandbox
+- Semua 7 file XML **well-formed** (diparse dengan `[xml]`).
+- Keseimbangan `{ }` tiap file Kotlin valid.
+- Import tidak terpakai dibersihkan (`Build` di MainActivity, `everAvailable` di NetWatcher).
+- **Tidak** bisa menjalankan `gradlew`/`tsc` untuk APK — Android SDK tidak tersedia di sandbox.
+
+#### Tindak lanjut: berhasil di-BUILD di mesin lokal
+Environment lokal ternyata belum siap. Yang dikerjakan:
+1. **JDK 17 dipasang** via `winget install Microsoft.OpenJDK.17` (17.0.21).
+2. **Gradle 8.7** diunduh manual (tidak ada di winget) → `gradle wrapper` dijalankan; wrapper kini **disertakan** di repo.
+3. **`local.properties`** dibuat (`sdk.dir=...`) — di-.gitignore, jadi per-mesin.
+4. **`sdkmanager` lama (`tools/bin`) gagal** di JDK 17 (`ClassNotFoundException: javax.xml.bind.annotation.XmlSchema`) → dipasang `cmdline-tools 11076708`.
+5. **Lisensi SDK diterima** + `platforms;android-34` & `build-tools;34.0.0` diinstal (sebelumnya hanya android-29).
+
+**Hasil build (terverifikasi):**
+- `app-debug.apk` → **2.074 KB (2,07 MB)**
+- `app-release-unsigned.apk` → **109 KB** (R8 + shrinkResources aktif)
+- `aapt dump badging`: `id.knwng.pariwara.display`, minSdk 24, targetSdk 34, label "Pariwara Display", **leanback-launchable-activity terdaftar** (dikenali sebagai app Android TV).
+- Ukuran final **jauh di bawah perkiraan awal** (2,5–3,5 MB) karena R8 membuang sebagian besar `kotlin-stdlib` yang tak terpakai.
+
+**Belum dilakukan:** signing release (butuh keystore user) dan uji di TV fisik.
+
+---
+
 ### [2026-10-27] UI: Micro-interaction dashboard (card-lift, btn-press, modal-in)
 
 - **Status:** ✅ Selesai (build hijau 14 routes; lint tetap **20 problems**, tidak naik)
