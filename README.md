@@ -1,4 +1,4 @@
-# Pariwara — Digital Signage CMS
+﻿# Pariwara — Digital Signage CMS
 
 CMS untuk mengelola TV / video wall dari mana saja: pilih foto, video, atau
 playlist YouTube; atur durasi tiap konten; jadwalkan per hari & jam; kendalikan
@@ -88,6 +88,10 @@ progress.md                       Riwayat task
 > migrasi; kalau tidak ada, struktur tabel mengikuti `progress.md` dan dokumen ini.
 
 ## 2. Siapkan Supabase (gratis)
+
+> **Panduan lengkap langkah demi langkah** (instalasi, urutan migrasi, .env, deploy
+> Vercel, tutorial pemakaian, troubleshooting, onboarding klien) ada di
+> **[Docs.md](./Docs.md)**. Bagian di bawah ini ringkasannya saja.
 
 1. Buat project baru di [supabase.com](https://supabase.com) (paket Free sudah cukup).
 2. Buka **SQL Editor** lalu jalankan skema. Untuk instalasi baru: tempel seluruh isi

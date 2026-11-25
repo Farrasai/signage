@@ -1,4 +1,4 @@
-# Progress — Pariwara Digital Signage CMS
+﻿# Progress — Pariwara Digital Signage CMS
 
 Catatan ringkasan semua task yang sudah dikerjakan pada project ini.
 Diperbarui otomatis setiap ada penambahan atau perubahan kode.
@@ -6,6 +6,49 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 ---
 
 ## 📋 Riwayat Task
+
+### [2026-10-27] DOCS: Docs.md - instalasi, deploy Supabase, tutorial pemakaian
+
+- **Status:** Selesai (build hijau, lint tetap 20)
+- **Tujuan:** Satu dokumen operasional dari nol sampai TV berjalan, untuk admin teknis yang memasang Pariwara per instansi.
+
+#### Temuan yang diperbaiki
+1. **`.env.example` TIDAK ADA**, padahal `README.md` bagian 3 menyuruh `cp .env.example .env.local`. Siapa pun yang memasang dari nol langsung gagal. -> dibuat, berisi 3 variabel (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) dengan peringatan bahwa service_role key tidak boleh diberi prefix `NEXT_PUBLIC_`.
+2. **`supabase/schema.sql` belum lengkap dan tidak idempotent** (diverifikasi, bukan asumsi):
+   - referensi `profiles` = **0**, `owner_id` = **0**
+   - `create policy` = **38**, `drop policy if exists` = **0**
+   - 6 baris `alter publication supabase_realtime add table` tanpa guard
+   Konsekuensi bila hanya menjalankan `schema.sql`: dashboard error setelah login, tombol Buat Operator gagal, isolasi per bidang tidak aktif, dan rerun gagal `policy already exists`.
+   -> Docs.md memuat **urutan 8 file SQL wajib** (`schema.sql` -> 6 migrasi -> `fix_profiles_rls.sql`) dengan penjelasan mengapa nomor 4 (`20261006_multirole.sql`) tidak boleh dilewati.
+
+#### Isi Docs.md (425+ baris, 10 bagian)
+1. Prasyarat (Node 20.9+, Supabase, Vercel, Git)
+2. Instalasi lokal + tabel 3 env var (asal & sifat rahasia) + verifikasi build
+3. Setup Supabase: urutan 8 file SQL + 6 query verifikasi
+4. Akun admin pertama + penanganan bila baris `profiles` tidak muncul
+5. Deploy Vercel + tabel env per environment + catatan CSP
+6. Memasang TV (pairing PIN, APK, kiosk, desktop Pake)
+7. Tutorial pemakaian: alur KONTEN -> PLAYLIST -> JADWAL -> LAYAR, 4 jenis konten, playlist, jadwal, announcer, darurat, user, batasan operator
+8. Pemecahan masalah: 7 gejala instalasi + 8 gejala TV + cara baca `?debug=1`
+9. Checklist go-live (8 + 7 + 10 poin)
+10. Onboarding klien baru (model 1 project per klien, 8 langkah, hal yang tidak boleh diubah, rekomendasi `org_id`)
+
+#### Perbaikan kualitas saat penulisan
+- SQL sempat memakai **kutip ganda** (`\"admin\"`), yang di PostgreSQL berarti identifier bukan string -> diganti kutip tunggal.
+- Angka klaim dikoreksi dari hasil hitung nyata: 11 tabel (10 + `profiles`), >=70 policy (38 + 33).
+- Typo `muncil` -> `muncul`.
+- Setiap path file, nama RPC, dan jumlah policy **diverifikasi ke file sumber**, bukan dari ingatan.
+- Diverifikasi juga: `display_pairing_codes` hanya punya policy `to authenticated` (anon tidak bisa SELECT) - klaim di checklist benar.
+
+#### File diubah
+- `Docs.md` (baru)
+- `.env.example` (baru)
+- `README.md` bagian 2: menunjuk ke `Docs.md` sebagai panduan lengkap
+
+- **Verifikasi:** `tsc` exit 0, `npm run build` Compiled successfully, `eslint` 20 problems (tidak naik).
+
+---
+
 
 ### [2026-10-27] APK: Kiosk WebView untuk Android TV (`apk-display/`)
 
@@ -703,3 +746,20 @@ signage/
 - **Tidak diubah:** seluruh kode aplikasi, isi progress.md sebelumnya, dan keputusan desain final yang sudah ada.
 - **Build:** OK - **Lint:** 34 problems (baseline, tidak ada masalah baru)
 _Terakhir diperbarui: 2026-10-26_
+
+#### Tambahan: bagian 10 "Fitur unggulan" (606 baris total)
+
+Bagian baru berisi 7 sub-bagian, semua klaim **diverifikasi ke kode** sebelum ditulis:
+
+1. **10.1 Pengumuman Suara** - 2 mode (langsung/terjadwal), label, audio mp3/wav/ogg, jam `HH:mm`, 7 hari, ulang **1-3x** (`[1,2,3]` di `ScheduleFormFields.tsx:64`), target layar, switch aktif, putar sekarang, pratinjau. Keunggulan: FIFO, badge mic, pengaman file master (`storage_path`), tanpa cron.
+2. **10.2 Siaran Darurat** - judul maks **120**, pesan maks **1000**, **4 template preset** (`app/dashboard/emergency/page.tsx:11-16`: Default, Rapat Staf AA, Evakuasi Gedung, Gangguan Layanan), target layar, tidak bisa ditutup dari TV, sanitasi XSS.
+3. **10.3 Konten Media** - 5 jenis (`image|video|youtube_video|youtube_playlist|table`), `accept="image/*,video/*"`, 3 sumber (upload/CDN/YouTube), tabel agenda auto-fit, filter per tipe, grid/list, thumbnail otomatis, tabel tips ukuran file.
+4. **10.4 Playlist** - nama, isi, urutan (`sort_order`), durasi per item (`duration_override`), hapus item; keunggulan satu konten banyak playlist, video tidak dipotong, looping mulus.
+5. **10.5 Jadwal Tayang** - per layar, 7 hari, `start_time`/`end_time`, kolom `priority`; memakai waktu server, kembali ke default otomatis.
+6. **10.6 Layar / TV** - 5 perintah remote (`refresh|next|prev|play|pause`), nama, playlist default, marquee (rumus kecepatan `panjang x 0,28 dtk`, min 15 dtk), jeda global, pairing, salin URL; heartbeat 25 dtk / ambang 60 dtk.
+7. **10.7 Keamanan dan tata kelola** - RLS per bidang, pairing tanpa SELECT anon, cookie httpOnly, rate limit, sanitasi XSS, allowlist YouTube, security headers.
+
+**Struktur akhir Docs.md:** 11 bagian + lampiran, 606 baris. Bagian "Onboarding klien baru" dinomori ulang 10 -> 11 beserta sub-bagiannya.
+
+#### Catatan proses
+Saat menulis bagian ini, dua perintah PowerShell gagal karena teks langsung diletakkan setelah header here-string (`@'teks`), yang membuat PowerShell mem-parse isi sebagai kode. File sempat terpotong lalu dipulihkan dari potongan yang utuh, dan sambungan antar sub-bagian diperiksa ulang (blank line sebelum heading). Verifikasi akhir: 0 sisa teks parser, 0 blok kosong berlebih.
