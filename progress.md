@@ -1,4 +1,4 @@
-﻿# Progress — Pariwara Digital Signage CMS
+# Progress — Pariwara Digital Signage CMS
 
 Catatan ringkasan semua task yang sudah dikerjakan pada project ini.
 Diperbarui otomatis setiap ada penambahan atau perubahan kode.
@@ -7,6 +7,25 @@ Diperbarui otomatis setiap ada penambahan atau perubahan kode.
 
 ## 📋 Riwayat Task
 
+### [2026-10-27] FIX: Video YouTube beku / glitch frame berulang di sebagian TV
+
+- **Status:** Selesai (build hijau, lint baseline tetap 20)
+- **Gejala:** Konten YouTube di satu TV "nyangkut" di frame yang sama / glitch berulang, harus clear cache atau restart aplikasi. TV lain aman. TV yang bermasalah juga sering nge-lag.
+- **ROOT CAUSE #1 (utama):** `SlideStage.tsx` me-render dua `SlideLayer` - `displayed` (terlihat) dan `staged` (prefetch, disembunyikan dengan `visibility: hidden`). Visibility hidden hanya mematikan PAINTING; iframe YouTube dengan `autoplay=1&mute=1` **tetap menjalankan stream** dan **tetap memegang video decoder**. Jadi TV menjalankan DUA stream YouTube sekaligus. Di TV low-end (1-2 MediaCodec) embed yang terlihat lalu tidak mendapat Surface -> frame beku.
+  - Mengapa hanya sebagian TV: TV dengan decoder lega (chip baru / RAM lebih besar) masih bisa handle dua embed. Yang bermasalah adalah yang decoder-nya ketat. Ini BUKAN overheating - overheat akan membuat seluruh TV melambat, bukan cuma satu jenis konten.
+  - Mengapa sering nge-lag: 2 stream YouTube (2x2-5 Mbps) + `<video>` prefetch + `<video>` aktif + RAM ~30-50 MB per iframe YouTube.
+- **ROOT CAUSE #2:** Tidak ada cleanup untuk `<iframe>`. `VideoLayer` sudah melepas decoder (`pause()` + `removeAttribute("src")` + `load()`), tapi iframe YouTube tidak pernah dihentikan -> setiap pergantian YouTube meninggalkan stream yang masih jalan.
+- **ROOT CAUSE #3 (ringan):** `enablejsapi=1` diset tanpa ada kode yang memakai `postMessage`/`YT.*` (grep repo = 0 hasil). Mengaktifkannya memicu banner "Video player configuration error" pada sebagian WebView TV.
+- **Perbaikan:**
+  - `components/SlideStage.tsx`: (a) item YouTube ditukar LANGSUNG ke lapis terlihat, tidak lewat lapis prefetch; (b) saat `hidden`, render `<div className="h-full w-full bg-black">` - bukan iframe - sehingga tidak ada stream YouTube tersembunyi; (c) cleanup `frame.src = "about:blank"` saat layer dilepas.
+  - Catatan teknis penting: elemen iframe **harus dicapture saat effect dipasang**, bukan dibaca dari `ref` saat cleanup. React sudah menukar `ref` ke iframe yang baru sebelum cleanup effect lama berjalan - cleanup yang membaca ref akan mematikan iframe yang SALAH (yang baru), bukan yang lama.
+  - `lib/utils.ts`: tambah `isYouTubeType()`, hapus `enablejsapi=1`.
+  - `lib/video-debug.ts`: tambah penghitung embed YouTube aktif.
+  - `components/VideoDebugBadge.tsx`: badge `?debug=1` kini menampilkan "embed YouTube aktif: N". N=1 normal, N>1 = decoder berebut.
+- **Konsekuensi yang diterima:** jeda hitam ±1-3 detik saat embed YouTube dimuat. Lebih baik jeda singkat daripada frame beku permanen. Konten LAIN (foto/video/tabel) tetap pakai prefetch seperti sebelumnya.
+- **Tidak diubah:** setelan APK (semua sudah benar: `mediaPlaybackRequiresUserGesture=false`, `domStorageEnabled=true`, `cacheMode=LOAD_DEFAULT`, `textZoom=100`, `useWideViewPort=false`, `onRenderProcessGone` ada). `largeHeap` sengaja tidak diubah - itu hanya band-aid, bukan perbaikan.
+- **WAJIB diuji di TV fisik:** putar playlist dengan 2+ item YouTube, looping, dan ganti-ganti YouTube <-> video. Cek badge `?debug=1` -> "embed YouTube aktif" harus selalu 1.
+- **Saran produk (belum diimplementasi):** untuk signage 24/7, utamakan MP4/CDN daripada embed YouTube - risiko iklan, video dihapus pemilik, adaptive bitrate, bobot RAM, dan durasi manual.
 ### [2026-10-27] DOCS: Docs.md - instalasi, deploy Supabase, tutorial pemakaian
 
 - **Status:** Selesai (build hijau, lint tetap 20)

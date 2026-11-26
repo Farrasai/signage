@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlaylistItem } from "@/lib/types";
-import { youtubeEmbedUrl } from "@/lib/utils";
-import { labelForErrorCode, reportVideoError } from "@/lib/video-debug";
+import { isYouTubeType, youtubeEmbedUrl } from "@/lib/utils";
+import {
+  labelForErrorCode,
+  reportVideoError,
+  reportYouTubeFrameMounted,
+  reportYouTubeFrameUnmounted,
+} from "@/lib/video-debug";
 import AgendaTable from "@/components/AgendaTable";
 
 /** Batas tunggu maksimal agar konten berikutnya siap sebelum ditukar paksa. */
@@ -119,6 +124,27 @@ export default function SlideStage({
     const targetItem = items[currentIndex];
     if (!targetItem) return;
 
+    // YouTube: tukar LANGSUNG ke lapis terlihat, jangan lewat lapis prefetch.
+    //
+    // Embed YouTube TIDAK boleh di-mount di lapis tersembunyi (staged).
+    // `visibility: hidden` hanya mematikan painting; iframe dengan
+    // autoplay=1&mute=1 tetap menjalankan stream dan tetap memegang video
+    // decoder. Di TV low-end (1-2 MediaCodec) iframe yang terlihat lalu tidak
+    // mendapat Surface -> frame beku / glitch berulang. TV lain aman karena
+    // decoder-nya lega - itu sebabnya bug ini hanya muncul di sebagian TV.
+    //
+    // Konsekuensi yang diterima: jeda hitam sekitar 1-3 detik saat embed
+    // dimuat. Lebih baik jeda singkat daripada frame beku permanen.
+    if (isYouTubeType(targetItem.media?.type)) {
+      clearReadyFailsafe();
+      stagedRef.current = null;
+      stagedReadyRef.current = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStaged(null);
+      setDisplayed({ index: currentIndex, item: targetItem });
+      return;
+    }
+
     // Video diberi waktu lebih panjang untuk mendapat frame pertama.
     const readyMs = targetItem.media?.type === "video" ? READY_TIMEOUT_VIDEO_MS : READY_TIMEOUT_MS;
 
@@ -210,13 +236,42 @@ function SlideLayer({
   hidden?: boolean;
 }) {
   const media = slot.item.media;
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const mediaId = media?.id ?? null;
+  const isYouTube = isYouTubeType(media?.type);
+
+  // Hentikan stream YouTube embed saat lapis ini dilepas.
+  //
+  // Elemen iframe dicapture SAAT effect dipasang (bukan dibaca dari ref saat
+  // cleanup) karena React sudah menukar ref ke iframe yang baru sebelum
+  // cleanup effect lama berjalan. Kalau cleanup membaca ref, dia mematikan
+  // iframe yang baru, bukan yang lama.
+  //
+  // Effect ini HANYA berlaku untuk konten YouTube. Lapis foto/video/tabel
+  // tidak punya iframe, jadi penghitung embed tidak boleh naik untuk mereka.
+  useEffect(() => {
+    if (!isYouTube) return;
+    const frame = iframeRef.current;
+    if (!frame) return;
+    reportYouTubeFrameMounted();
+    return () => {
+      reportYouTubeFrameUnmounted();
+      try {
+        // Kosongkan src supaya stream YouTube benar-benar berhenti.
+        frame.src = "about:blank";
+      } catch {
+        // abaikan
+      }
+    };
+  }, [mediaId, isYouTube]);
+
   if (!media) return null;
 
   // Sengaja TIDAK memakai opacity/transition. Lapis prefetch disembunyikan total
   // (visibility) sehingga tidak ikut ter-composite; pertukaran dilakukan instan.
   return (
     <div
-      className="absolute inset-0"
+      className="absolute inset-0 bg-black"
       style={{
         visibility: hidden ? "hidden" : "visible",
         pointerEvents: hidden ? "none" : "auto",
@@ -243,28 +298,41 @@ function SlideLayer({
           onVideoEnded={onVideoEnded}
           onActiveVideoChange={onActiveVideoChange}
         />
-      ) : media.type === "table" && media.content ? (
-        <ReadyOnMount onReady={onReady}>
-          <AgendaTable
-            title={media.content.title}
-            columns={media.content.columns}
-            rows={media.content.rows}
+      ) : media.type === "table" ? (
+        media.content ? (
+          <ReadyOnMount onReady={onReady}>
+            <AgendaTable
+              title={media.content.title}
+              columns={media.content.columns}
+              rows={media.content.rows}
+            />
+          </ReadyOnMount>
+        ) : null
+      ) : isYouTube ? (
+        hidden ? (
+          // Prefetch YouTube SENGAJA tidak mounting iframe.
+          //
+          // Iframe yang disembunyikan dengan `visibility: hidden` TETAP
+          // menjalankan stream (autoplay=1&mute=1) dan tetap memegang video
+          // decoder. Dua embed aktif di TV low-end (1-2 MediaCodec) ->
+          // iframe yang terlihat tidak mendapat Surface -> frame beku.
+          <div className="h-full w-full bg-black" />
+        ) : (
+          <iframe
+            key={media.url}
+            ref={iframeRef}
+            src={youtubeEmbedUrl(
+              media.type as "youtube_video" | "youtube_playlist",
+              media.url
+            )}
+            className="h-full w-full"
+            allow="autoplay; encrypted-media; fullscreen"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
+            frameBorder={0}
+            onLoad={onReady}
           />
-        </ReadyOnMount>
-      ) : (
-        <iframe
-          src={youtubeEmbedUrl(
-            media.type as "youtube_video" | "youtube_playlist",
-            media.url
-          )}
-          className="h-full w-full"
-          allow="autoplay; encrypted-media; fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-          frameBorder={0}
-          onLoad={onReady}
-          loading="lazy"
-        />
-      )}
+        )
+      ) : null}
     </div>
   );
 }

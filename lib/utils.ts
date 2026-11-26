@@ -63,9 +63,26 @@ export function parseYouTubeUrl(input: string): ParsedYouTube | null {
   return null;
 }
 
+/**
+ * true bila tipe konten memakai embed YouTube.
+ *
+ * PENTING: embed YouTube TIDAK boleh di-mount di lapis prefetch yang
+ * disembunyikan. `visibility: hidden` hanya mematikan painting; iframe dengan
+ * autoplay=1&mute=1 tetap menjalankan stream dan tetap memegang video
+ * decoder. Di TV low-end (1-2 MediaCodec) dua embed aktif -> iframe yang
+ * terlihat tidak mendapat Surface -> frame beku/glitch berulang.
+ */
+export function isYouTubeType(type: string | null | undefined): boolean {
+  return type === "youtube_video" || type === "youtube_playlist";
+}
+
 export function youtubeEmbedUrl(type: "youtube_video" | "youtube_playlist", id: string) {
   const base = "https://www.youtube.com/embed/";
-  const params = "autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1";
+  // enablejsapi sengaja TIDAK dipakai: tidak ada kode yang memanggil
+  // postMessage / YT.* di repo ini, tapi mengaktifkannya membuat YouTube
+  // menampilkan banner "Video player configuration error" pada sebagian
+  // WebView TV yang tidak mengirim parameter origin yang sesuai.
+  const params = "autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1";
   if (type === "youtube_playlist") {
     return `${base}videoseries?list=${encodeURIComponent(id)}&${params}`;
   }

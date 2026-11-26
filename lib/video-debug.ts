@@ -40,3 +40,28 @@ export function reportVideoError(entry: Omit<VideoDebugEntry, "at">) {
 export function getLastVideoError(): VideoDebugEntry | null {
   return lastError;
 }
+
+/**
+ * Penghitung embed YouTube yang sedang aktif.
+ *
+ * Kegunaan: badge `?debug=1` di TV dapat menunjukkan jumlah embed yang
+ * benar-benar hidup. Kalau nilainya > 1, berarti ada lagi stream YouTube
+ * yang tidak dihentikan ->--共享 decoder -> frame beku.
+ *
+ * Perhatikan: di konten YouTube TIDAK ada elemen <video> milik kita, jadi
+ * error <video> (reportVideoError) tidak pernah terpicu. Penghitung ini
+ * adalah satu-satunya jejak yang bisa dibaca langsung di layar TV.
+ */
+let youTubeFrameCount = 0;
+
+export function reportYouTubeFrameMounted() {
+  youTubeFrameCount += 1;
+}
+
+export function reportYouTubeFrameUnmounted() {
+  youTubeFrameCount = Math.max(0, youTubeFrameCount - 1);
+}
+
+export function getYouTubeFrameCount(): number {
+  return youTubeFrameCount;
+}

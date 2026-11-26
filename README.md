@@ -1,4 +1,4 @@
-﻿# Pariwara — Digital Signage CMS
+# Pariwara — Digital Signage CMS
 
 CMS untuk mengelola TV / video wall dari mana saja: pilih foto, video, atau
 playlist YouTube; atur durasi tiap konten; jadwalkan per hari & jam; kendalikan
@@ -318,12 +318,16 @@ Bug di aplikasi ini beberapa kali **bukan** di tempat yang terlihat. Baca Consol
 | Video CDN blank saat looping, putaran pertama normal | Decoder hardware bocor: `VideoLayer` tidak melepas elemen `<video>` saat unmount | `components/SlideStage.tsx` (cleanup `removeAttribute("src")` + `load()`) |
 | Video besar butuh waktu lama / hitam 8 dtk | Tukar-paksa terlalu cepat untuk video | `components/SlideStage.tsx` (`READY_TIMEOUT_VIDEO_MS = 25000`) |
 | Video gagal tanpa pesan apa pun | `onError` sengaja tidak memanggil skip, jadi senyap | buka player dengan `?debug=1` (badge diagnostik) |
+| Video **YouTube** beku di satu frame / glitch berulang, hanya di sebagian TV | Embed YouTube di-mount di lapis prefetch tersembunyi -> dua stream berebut decoder (TV low-end cuma punya 1-2 MediaCodec) | `components/SlideStage.tsx` (embed YouTube tidak boleh di-mount saat `hidden`) |
 
 ### Membaca diagnostik video di TV
 
 Buka `https://domain-anda/display/nama-slug?debug=1`. Badge kecil di kiri atas menampilkan
 kegagalan video terakhir: `DECODE` (3) = decoder menolak, `NETWORK` (2) = unduhan gagal,
 `SRC_NOT_SUPPORTED` (4) = codec tidak didukung WebView, `ABORTED` (1) = normal saat transisi.
+Badge juga menampilkan **jumlah embed YouTube yang aktif**. Nilai `1` = normal.
+Nilai `> 1` berarti ada stream YouTube yang belum dihentikan -> decoder sedang berebut
+-> frame beku. Ini yang membuat gejala "hanya sebagian TV yang kena".
 Tanpa `?debug=1` badge tidak pernah muncul.
 
 ### Cara membedakan error RLS storage vs RLS tabel
